@@ -16,6 +16,7 @@ const (
 
 	uploadCaptureGroupsCount = 3
 	stopUploadCaptureGroupsCount = 2
+	downloadCaptureGroupsCount = 2
 )
 
 type regexSet struct {
@@ -72,7 +73,7 @@ func (p *Parser)Parse() (Doable, error) {
 	} else if p.regexSet.stopUpload.MatchString(commandString) {
 		return p.stopUploadCommand(commandString)
 	} else if p.regexSet.download.MatchString(commandString) {
-
+		return p.downloadCommand(commandString)
 	} else if p.regexSet.disconnect.MatchString(commandString) {
 		return DisconnectCommand{}, nil
 	}
@@ -93,4 +94,12 @@ func (p *Parser) stopUploadCommand(commandString string) (Doable, error) {
 		return nil, fmt.Errorf("request matched stop-upload regex but got %d capture groups insted of %d", cgc, stopUploadCaptureGroupsCount)
 	}
 	return NewStopUploadCommand(p.Conn, p.user,p.fm, captureGroups[1]), nil
+}
+
+func (p *Parser) downloadCommand(commandString string) (Doable, error) {
+	captureGroups := p.regexSet.download.FindStringSubmatch(commandString)
+	if cgc := len(captureGroups); cgc != downloadCaptureGroupsCount {
+		return nil, fmt.Errorf("request matched download regex but got %d capture groups insted of %d", cgc, downloadCaptureGroupsCount)
+	}
+	return NewDownloadCommand(p.Conn, p.fm, captureGroups[1]), nil
 }

@@ -50,6 +50,16 @@ func (fm *FileManager) DeleteFileInfo(name string) error {
 	return nil
 }
 
+func (fm *FileManager) GetFileInfo(name string) (*FileInfo, error) {
+	if fm.fileInfoExists(name){
+		return nil, fmt.Errorf("file info named %q does not exist", name)
+	}
+	//TODO: Other goroutine could delete meanwhile
+	fm.Lock()
+	defer fm.Unlock()
+	return fm.files[name], nil
+}
+
 func (fm *FileManager) DeleteUserFromFileInfo(filename string, user User) error {
 	if !fm.fileInfoExists(filename) {
 			return fmt.Errorf("file named %q does not exist", filename)

@@ -61,6 +61,11 @@ func (fi *FileInfo) RemoveHolder(username string) error {
 	return nil
 }
 
+func (fi *FileInfo) GetHolders() string {
+	fi.Lock()
+	defer fi.Unlock()
+	return fmt.Sprintf("%v", fi.holders)
+}
 
 func (fi *FileInfo) HasSameHash(hash Hash) bool {
 	fi.Lock()
