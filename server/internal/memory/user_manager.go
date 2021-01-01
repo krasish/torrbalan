@@ -5,8 +5,8 @@ import (
 )
 
 type User struct {
-	name string
-	addr string
+	Name string
+	Addr string
 }
 
 type UserManager struct{
@@ -21,7 +21,7 @@ func (um *UserManager) RegisterUser(name, addr string) (User, error) {
 	if _, exists := um.users[name]; exists {
 		return User{}, fmt.Errorf("user %q already exists", name)
 	}
-	um.users[name] = User{name: name, addr: addr}
+	um.users[name] = User{Name: name, Addr: addr}
 	return um.users[name], nil
 }
 

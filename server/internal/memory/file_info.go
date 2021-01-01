@@ -35,13 +35,19 @@ func (fi *FileInfo) HasHolder(name string) bool {
 	return exists
 }
 
+func (fi *FileInfo) HasAnyHolders() bool{
+	fi.Lock()
+	defer fi.Unlock()
+	return len(fi.holders) == 0
+}
+
 func (fi *FileInfo) AddHolder(user User) error {
-	if fi.HasHolder(user.name) {
-		return fmt.Errorf("user %q already is holder of file %s", user.name, fi.name)
+	if fi.HasHolder(user.Name) {
+		return fmt.Errorf("user %q already is holder of file %s", user.Name, fi.name)
 	}
 	fi.Lock()
 	defer fi.Unlock()
-	fi.holders[user.name] = user
+	fi.holders[user.Name] = user
 	return nil
 }
 

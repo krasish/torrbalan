@@ -55,30 +55,34 @@ func (s *Server) handleConnection(conn net.Conn) {
 
 	parser := command.NewParser(conn, user, s.FileManager, s.UserManager)
 	for {
-		err := s.parseCommandAndExecute(parser, remoteAddr)
-		if err != nil {
+		var msg interface{}
+		func() {
+			defer func() {
+				msg = recover()
+			}()
+			s.parseCommandAndExecute(parser, remoteAddr)
+		}()
+		if msg == command.DisconnectMessage {
 			return
 		}
 	}
 }
 
-func (s *Server) parseCommandAndExecute(parser *command.Parser, remoteAddr string) error {
+func (s *Server) parseCommandAndExecute(parser *command.Parser, remoteAddr string) {
 	doable, err := parser.Parse()
 	if err != nil {
-		//TODO: Tell client you cannot parse command
-		log.Printf("could not parse command: %v", err)
-		return nil
+		log.Printf("while parsing command of %s: %v\n",remoteAddr, err)
+		if _, err := parser.Conn.Write([]byte("your command could not be parsed\n")); err != nil {
+			log.Printf("could not send message to client for failed parsing: %v\n", err)
+		}
 	}
-	//if disconnect, ok := doable.(command.DisconnectCommand); ok {
-	//	err := invalid.Do()
-	//	return fmt.Errorf("")
-	//}
 
 	if err = doable.Do(); err != nil {
-		//TODO: Write error to client
-		log.Printf("while doing command for %s: %v\n", remoteAddr, err)
+		log.Printf("while executing command of %s: %v\n",remoteAddr, err)
+		if _, err := parser.Conn.Write([]byte("your command could not be executed\n")); err != nil {
+			log.Printf("could not send message to client for failed executing: %v\n", err)
+		}
 	}
-	return nil
 }
 
 
