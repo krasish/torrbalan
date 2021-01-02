@@ -2,6 +2,7 @@ package memory
 
 import (
 	"fmt"
+	"sync"
 )
 
 type User struct {
@@ -11,13 +12,19 @@ type User struct {
 
 type UserManager struct{
 	users map[string]User
+	m *sync.Mutex
 }
 
 func NewEmptyUserManager() *UserManager {
-	return &UserManager{users: make(map[string]User)}
+	return &UserManager{
+		users: make(map[string]User),
+		m:     &sync.Mutex{},
+	}
 }
 
 func (um *UserManager) RegisterUser(name, addr string) (User, error) {
+	um.m.Lock()
+	defer um.m.Unlock()
 	if _, exists := um.users[name]; exists {
 		return User{}, fmt.Errorf("user %q already exists", name)
 	}
@@ -26,6 +33,8 @@ func (um *UserManager) RegisterUser(name, addr string) (User, error) {
 }
 
 func (um *UserManager) DeleteUser(name string) error {
+	um.m.Lock()
+	defer um.m.Unlock()
 	if _, exists := um.users[name]; !exists {
 		return fmt.Errorf("user %q does not exists", name)
 	}

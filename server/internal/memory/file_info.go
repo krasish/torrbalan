@@ -20,7 +20,7 @@ func (h Hash) String() string {
 type FileInfo struct {
 	name string
 	h 	Hash
-	*sync.Mutex
+	*sync.RWMutex
 	holders map[string]User
 }
 
@@ -29,15 +29,15 @@ func NewFileInfo(name string, h Hash, holders map[string]User) *FileInfo {
 }
 
 func (fi *FileInfo) HasHolder(name string) bool {
-	fi.Lock()
-	defer fi.Unlock()
+	fi.RLock()
+	defer fi.RUnlock()
 	_, exists := fi.holders[name]
 	return exists
 }
 
 func (fi *FileInfo) HasAnyHolders() bool{
-	fi.Lock()
-	defer fi.Unlock()
+	fi.RLock()
+	defer fi.RUnlock()
 	return len(fi.holders) == 0
 }
 
@@ -62,14 +62,14 @@ func (fi *FileInfo) RemoveHolder(username string) error {
 }
 
 func (fi *FileInfo) GetHolders() string {
-	fi.Lock()
-	defer fi.Unlock()
+	fi.RLock()
+	defer fi.RUnlock()
 	return fmt.Sprintf("%v", fi.holders)
 }
 
 func (fi *FileInfo) HasSameHash(hash Hash) bool {
-	fi.Lock()
-	defer fi.Unlock()
+	fi.RLock()
+	defer fi.RUnlock()
 	return fi.h == hash
 }
 
