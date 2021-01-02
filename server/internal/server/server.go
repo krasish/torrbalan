@@ -45,11 +45,11 @@ func (s *Server) Run() error {
 func (s *Server) handleConnection(conn net.Conn) {
 	remoteAddr := conn.RemoteAddr().String()
 	log.Printf("Started handling connection with %s\n", remoteAddr)
-	defer s.closeConnection(conn, remoteAddr)
 
 	user, err := command.NewRegisterCommand(s.UserManager, conn).Do()
+	defer s.closeConnection(conn, user.Name, err == nil)
 	if err != nil {
-		log.Printf("could not register %q: %v\n", remoteAddr, err)
+		log.Printf("could not register %s: %v\n", remoteAddr, err)
 		return
 	}
 
@@ -63,6 +63,7 @@ func (s *Server) handleConnection(conn net.Conn) {
 			s.parseCommandAndExecute(parser, remoteAddr)
 		}()
 		if msg == command.DisconnectMessage {
+			log.Printf("closed connection with %s: %v\n", remoteAddr, err)
 			return
 		}
 	}
@@ -86,17 +87,19 @@ func (s *Server) parseCommandAndExecute(parser *command.Parser, remoteAddr strin
 }
 
 
-func (s *Server) closeConnection(conn net.Conn, remoteAddr string) {
+func (s *Server) closeConnection(conn net.Conn, name string, registeredSuccessfully bool) {
 	<- s.limiter
 
 	if err := conn.Close(); err != nil {
-		log.Printf("could not close connection with %s: %v", remoteAddr, err)
+		log.Printf("could not close connection with %s: %v", name, err)
 	}
-	if err := s.DeleteUser(remoteAddr); err != nil {
-		log.Printf("could not delete user with addr %s: %v", remoteAddr, err)
-		return
-	}
-	if err := s.RemoveUserFromOwners(remoteAddr); err != nil {
-		log.Printf("could not rmeove user with addr %s from owners: %v", remoteAddr, err)
+	if registeredSuccessfully {
+		if err := s.DeleteUser(name); err != nil {
+			log.Printf("could not delete user %q: %v", name, err)
+			return
+		}
+		if err := s.RemoveUserFromOwners(name); err != nil {
+			log.Printf("could not rmeove user %q from owners: %v", name, err)
+		}
 	}
 }
