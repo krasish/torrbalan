@@ -6,7 +6,7 @@ import (
 )
 
 type InvalidCommand struct {
-	conn    net.Conn
+	conn net.Conn
 }
 
 func NewInvalidCommand(conn net.Conn) *InvalidCommand {

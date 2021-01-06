@@ -10,9 +10,9 @@ type User struct {
 	Addr string
 }
 
-type UserManager struct{
+type UserManager struct {
 	users map[string]User
-	m *sync.Mutex
+	m     *sync.Mutex
 }
 
 func NewEmptyUserManager() *UserManager {

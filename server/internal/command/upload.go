@@ -2,14 +2,15 @@ package command
 
 import (
 	"fmt"
-	"github.com/krasish/torrbalan/server/internal/memory"
 	"net"
+
+	"github.com/krasish/torrbalan/server/internal/memory"
 )
 
 type UploadCommand struct {
 	conn     net.Conn
 	user     memory.User
-	fm 		 *memory.FileManager
+	fm       *memory.FileManager
 	fileName string
 	fileHash string
 }
@@ -21,8 +22,14 @@ func NewUploadCommand(conn net.Conn, user memory.User, fm *memory.FileManager, f
 func (c *UploadCommand) Do() error {
 	err := c.fm.AddFileInfo(c.fileName, c.fileHash, c.user)
 	if err != nil {
-		if _, err := c.conn.Write([]byte(err.Error())); err != nil {
-			return fmt.Errorf("whiler writing error message to client: %w", err)
+		errorMessage := fmt.Sprintf("Could not upload file %q", c.fileName)
+
+		if fae, ok := err.(memory.FileAlreadyExistsError); ok {
+			errorMessage = fae.Error()
+		}
+
+		if _, err := c.conn.Write([]byte(errorMessage)); err != nil {
+			return fmt.Errorf("while writing error message to client: %w", err)
 		}
 	}
 	return nil

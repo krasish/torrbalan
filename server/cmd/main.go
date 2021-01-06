@@ -6,7 +6,7 @@ import (
 	"log"
 )
 
-func main(){
+func main() {
 	serverConfig := config.NewServer("8080", 100)
 	s := server.NewServer(serverConfig)
 	err := s.Run()

@@ -1,13 +1,15 @@
 package memory
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 )
 
-type Hash [32]byte
+type Hash [64]byte
 
-func NewHash(s string) (h Hash){
+func NewHash(s string) (h Hash) {
 	copy(h[:], s)
 	return
 }
@@ -16,16 +18,15 @@ func (h Hash) String() string {
 	return string(h[:])
 }
 
-
 type FileInfo struct {
 	name string
-	h 	Hash
+	h    Hash
 	*sync.RWMutex
 	holders map[string]User
 }
 
 func NewFileInfo(name string, h Hash, holders map[string]User) *FileInfo {
-	return &FileInfo{name: name, h: h, holders: holders}
+	return &FileInfo{name: name, h: h, holders: holders, RWMutex: &sync.RWMutex{}}
 }
 
 func (fi *FileInfo) HasHolder(name string) bool {
@@ -35,7 +36,7 @@ func (fi *FileInfo) HasHolder(name string) bool {
 	return exists
 }
 
-func (fi *FileInfo) HasAnyHolders() bool{
+func (fi *FileInfo) HasAnyHolders() bool {
 	fi.RLock()
 	defer fi.RUnlock()
 	return len(fi.holders) == 0
@@ -61,10 +62,20 @@ func (fi *FileInfo) RemoveHolder(username string) error {
 	return nil
 }
 
-func (fi *FileInfo) GetHolders() string {
+func (fi *FileInfo) GetHolders() ([]byte, error) {
 	fi.RLock()
 	defer fi.RUnlock()
-	return fmt.Sprintf("%v", fi.holders)
+	holdersSlice, i := make([]User, len(fi.holders)), 0
+	for _, user := range fi.holders {
+		holdersSlice[i] = user
+		i++
+	}
+	marshaledHolders, err := json.Marshal(holdersSlice)
+	if err != nil {
+		return nil, errors.New("could not marshal holders")
+	}
+	return marshaledHolders, nil
+
 }
 
 func (fi *FileInfo) HasSameHash(hash Hash) bool {
@@ -72,4 +83,3 @@ func (fi *FileInfo) HasSameHash(hash Hash) bool {
 	defer fi.RUnlock()
 	return fi.h == hash
 }
-

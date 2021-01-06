@@ -2,18 +2,19 @@ package server
 
 import (
 	"fmt"
+	"log"
+	"net"
+
 	"github.com/krasish/torrbalan/server/internal/command"
 	"github.com/krasish/torrbalan/server/internal/config"
 	"github.com/krasish/torrbalan/server/internal/memory"
-	"log"
-	"net"
 )
 
 type Server struct {
 	*memory.UserManager
 	*memory.FileManager
 	limiter chan struct{}
-	port string
+	port    string
 }
 
 func NewServer(config *config.Server) *Server {
@@ -55,15 +56,9 @@ func (s *Server) handleConnection(conn net.Conn) {
 
 	parser := command.NewParser(conn, user, s.FileManager, s.UserManager)
 	for {
-		var msg interface{}
-		func() {
-			defer func() {
-				msg = recover()
-			}()
-			s.parseCommandAndExecute(parser, remoteAddr)
-		}()
-		if msg == command.DisconnectMessage {
-			log.Printf("closed connection with %s: %v\n", remoteAddr, err)
+		s.parseCommandAndExecute(parser, remoteAddr)
+		if parser.ConnectionClosed {
+			log.Printf("closed connection with %s", remoteAddr)
 			return
 		}
 	}
@@ -72,27 +67,26 @@ func (s *Server) handleConnection(conn net.Conn) {
 func (s *Server) parseCommandAndExecute(parser *command.Parser, remoteAddr string) {
 	doable, err := parser.Parse()
 	if err != nil {
-		log.Printf("while parsing command of %s: %v\n",remoteAddr, err)
+		log.Printf("while parsing command of %s: %v\n", remoteAddr, err)
 		if _, err := parser.Conn.Write([]byte("your command could not be parsed\n")); err != nil {
 			log.Printf("could not send message to client for failed parsing: %v\n", err)
 		}
 	}
-
+	if parser.ConnectionClosed {
+		return
+	}
 	if err = doable.Do(); err != nil {
-		log.Printf("while executing command of %s: %v\n",remoteAddr, err)
-		if _, err := parser.Conn.Write([]byte("your command could not be executed\n")); err != nil {
-			log.Printf("could not send message to client for failed executing: %v\n", err)
-		}
+		log.Printf("while executing command of %s: %v\n", remoteAddr, err)
 	}
 }
 
-
 func (s *Server) closeConnection(conn net.Conn, name string, registeredSuccessfully bool) {
-	<- s.limiter
+	<-s.limiter
 
 	if err := conn.Close(); err != nil {
 		log.Printf("could not close connection with %s: %v", name, err)
 	}
+
 	if registeredSuccessfully {
 		if err := s.DeleteUser(name); err != nil {
 			log.Printf("could not delete user %q: %v", name, err)

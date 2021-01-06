@@ -4,25 +4,26 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/krasish/torrbalan/server/internal/memory"
+	"io"
 	"net"
 	"regexp"
 )
 
 const (
-	uploadPattern = `^[\s]*UPLOAD[\s]+([0-9A-Za-z.\-_\+$]+)[\s]+([A-Fa-f0-9]{64})[\s]*$`
+	uploadPattern     = `^[\s]*UPLOAD[\s]+([0-9A-Za-z.\-_\+$]+)[\s]+([A-Fa-f0-9]{64})[\s]*$`
 	stopUploadPattern = `^[\s]*STOP_UPLOAD[\s]+([0-9A-Za-z.\-_\+$]+)[\s]*$`
-	downloadPattern = `^[\s]*DOWNLOAD[\s]+([0-9A-Za-z.\-_\+$]+)[\s]*$`
+	downloadPattern   = `^[\s]*DOWNLOAD[\s]+([0-9A-Za-z.\-_\+$]+)[\s]*$`
 	disconnectPattern = `^[\s]*DISCONNECT[\s]*$`
 
-	uploadCaptureGroupsCount = 3
+	uploadCaptureGroupsCount     = 3
 	stopUploadCaptureGroupsCount = 2
-	downloadCaptureGroupsCount = 2
+	downloadCaptureGroupsCount   = 2
 )
 
 type regexSet struct {
-	upload *regexp.Regexp
+	upload     *regexp.Regexp
 	stopUpload *regexp.Regexp
-	download *regexp.Regexp
+	download   *regexp.Regexp
 	disconnect *regexp.Regexp
 }
 
@@ -43,29 +44,34 @@ type Doable interface {
 }
 
 type Parser struct {
-	Conn net.Conn
-	user memory.User
-	um   *memory.UserManager
-	fm   *memory.FileManager
+	Conn             net.Conn
+	user             memory.User
+	um               *memory.UserManager
+	fm               *memory.FileManager
+	ConnectionClosed bool
 	*regexSet
-
 }
 
 func NewParser(conn net.Conn, user memory.User, fileManager *memory.FileManager, userManager *memory.UserManager) *Parser {
 	return &Parser{
-		Conn:     conn,
-		user:     user,
-		um:       userManager,
-		fm:       fileManager,
-		regexSet: newRegexSet(),
+		Conn:             conn,
+		user:             user,
+		um:               userManager,
+		fm:               fileManager,
+		regexSet:         newRegexSet(),
+		ConnectionClosed: false,
 	}
 }
 
-func (p *Parser)Parse() (Doable, error) {
+func (p *Parser) Parse() (Doable, error) {
 	r := bufio.NewReader(p.Conn)
 	commandString, err := r.ReadString('\n')
 	if err != nil {
-		return nil, fmt.Errorf("while reading from %s: %w", p.Conn.RemoteAddr().String() ,err)
+		if err == io.EOF {
+			p.ConnectionClosed = true
+			return nil, nil
+		}
+		return nil, fmt.Errorf("while reading from %s: %w", p.Conn.RemoteAddr().String(), err)
 	}
 
 	if p.regexSet.upload.MatchString(commandString) {
@@ -75,17 +81,18 @@ func (p *Parser)Parse() (Doable, error) {
 	} else if p.regexSet.download.MatchString(commandString) {
 		return p.downloadCommand(commandString)
 	} else if p.regexSet.disconnect.MatchString(commandString) {
-		return DisconnectCommand{}, nil
+		p.ConnectionClosed = true
+		return nil, nil
 	}
 	return NewInvalidCommand(p.Conn), nil
 }
 
-func (p *Parser)uploadCommand(commandString string) (Doable, error) {
+func (p *Parser) uploadCommand(commandString string) (Doable, error) {
 	captureGroups := p.regexSet.upload.FindStringSubmatch(commandString)
 	if cgc := len(captureGroups); cgc != uploadCaptureGroupsCount {
 		return nil, fmt.Errorf("request matched upload regex but got %d capture groups insted of %d", cgc, uploadCaptureGroupsCount)
 	}
-	return NewUploadCommand(p.Conn, p.user,p.fm, captureGroups[1], captureGroups[2]), nil
+	return NewUploadCommand(p.Conn, p.user, p.fm, captureGroups[1], captureGroups[2]), nil
 }
 
 func (p *Parser) stopUploadCommand(commandString string) (Doable, error) {
@@ -93,7 +100,7 @@ func (p *Parser) stopUploadCommand(commandString string) (Doable, error) {
 	if cgc := len(captureGroups); cgc != stopUploadCaptureGroupsCount {
 		return nil, fmt.Errorf("request matched stop-upload regex but got %d capture groups insted of %d", cgc, stopUploadCaptureGroupsCount)
 	}
-	return NewStopUploadCommand(p.Conn, p.user,p.fm, captureGroups[1]), nil
+	return NewStopUploadCommand(p.Conn, p.user, p.fm, captureGroups[1]), nil
 }
 
 func (p *Parser) downloadCommand(commandString string) (Doable, error) {

@@ -24,10 +24,10 @@ func NewRegisterCommand(um *memory.UserManager, conn net.Conn) *RegisterCommand 
 
 func (rc *RegisterCommand) Do() (memory.User, error) {
 	var (
-		r *bufio.Reader = bufio.NewReader(rc.conn)
-		remoteAddr string = rc.conn.RemoteAddr().String()
-		username string
-		err error
+		r          *bufio.Reader = bufio.NewReader(rc.conn)
+		remoteAddr string        = rc.conn.RemoteAddr().String()
+		username   string
+		err        error
 	)
 
 askForUsername:
@@ -43,13 +43,13 @@ askForUsername:
 	if err != nil { // User already exists. Write error to client and retry process
 		_, err = rc.conn.Write([]byte(UserAlreadyExists))
 		if err != nil {
-			return user, fmt.Errorf("while writing to %s: %w",remoteAddr, err)
+			return user, fmt.Errorf("while writing to %s: %w", remoteAddr, err)
 		}
 		goto askForUsername
 	}
 	_, err = rc.conn.Write([]byte(RegisteredSuccessfully))
 	if err != nil {
-		return user, fmt.Errorf("while writing to %s: %w",remoteAddr, err)
+		return user, fmt.Errorf("while writing to %s: %w", remoteAddr, err)
 	}
 	return user, nil
 }

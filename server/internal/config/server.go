@@ -1,7 +1,7 @@
 package config
 
 type Server struct {
-	Port string
+	Port             string
 	ConcurrencyLimit int
 }
 
@@ -11,7 +11,3 @@ func NewServer(port string, limit int) *Server {
 		ConcurrencyLimit: limit,
 	}
 }
-
-
-
-
