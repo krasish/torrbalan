@@ -58,7 +58,10 @@ func (fm *FileManager) DeleteUserFromFileInfo(filename string, user User) error 
 	fm.RUnlock()
 
 	if err := fm.files[filename].RemoveHolder(user.Name); err != nil {
-		return fmt.Errorf("while removing %s as holder for %s: %v", user.Name, filename, err)
+		return UserIsNotOwnerError{
+			Wrapped:  fmt.Errorf("while removing %s as holder for %s: %v", user.Name, filename, err),
+			filename: filename,
+		}
 	}
 
 	if !fm.files[filename].HasAnyHolders() {
@@ -88,14 +91,6 @@ func (fm *FileManager) fileInfoExists(name string) bool {
 	return exists
 }
 
-type FileAlreadyExistsError struct {
-	filename string
-}
-
-func (f FileAlreadyExistsError) Error() string {
-	return fmt.Sprintf("Another file named %q already exists", f.filename)
-}
-
 func (fm *FileManager) safeCheckForExistence(name string, hash Hash) (bool, error) {
 	fm.RLock()
 	defer fm.RUnlock()
@@ -103,7 +98,27 @@ func (fm *FileManager) safeCheckForExistence(name string, hash Hash) (bool, erro
 		return false, nil
 	}
 	if !fm.files[name].HasSameHash(hash) {
-		return false, FileAlreadyExistsError{}
+		return false, FileAlreadyExistsError{
+			filename: name,
+		}
 	}
 	return true, nil
+}
+
+type FileAlreadyExistsError struct {
+	Wrapped  error
+	filename string
+}
+
+func (f FileAlreadyExistsError) Error() string {
+	return fmt.Sprintf("Another file named %q already exists", f.filename)
+}
+
+type UserIsNotOwnerError struct {
+	Wrapped  error
+	filename string
+}
+
+func (u UserIsNotOwnerError) Error() string {
+	return fmt.Sprintf("You do not upload %q", u.filename)
 }

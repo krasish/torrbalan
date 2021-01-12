@@ -3,15 +3,16 @@ package command
 import (
 	"bufio"
 	"fmt"
-	"github.com/krasish/torrbalan/server/internal/memory"
 	"io"
 	"log"
 	"net"
 	"strings"
+
+	"github.com/krasish/torrbalan/server/internal/memory"
 )
 
-const UserAlreadyExists = "UAE"
-const RegisteredSuccessfully = "RS"
+const UserAlreadyExists = "UAE\n"
+const RegisteredSuccessfully = "RS\n"
 
 type RegisterCommand struct {
 	manager *memory.UserManager
@@ -24,14 +25,14 @@ func NewRegisterCommand(um *memory.UserManager, conn net.Conn) *RegisterCommand 
 
 func (rc *RegisterCommand) Do() (memory.User, error) {
 	var (
-		r          *bufio.Reader = bufio.NewReader(rc.conn)
-		remoteAddr string        = rc.conn.RemoteAddr().String()
+		rw         *bufio.ReadWriter = bufio.NewReadWriter(bufio.NewReader(rc.conn), bufio.NewWriter(rc.conn))
+		remoteAddr string            = rc.conn.RemoteAddr().String()
 		username   string
 		err        error
 	)
 
 askForUsername:
-	for username, err = r.ReadString('\n'); err != nil; username, err = r.ReadString('\n') {
+	for username, err = rw.ReadString('\n'); err != nil; username, err = rw.ReadString('\n') {
 		if err == io.EOF {
 			return memory.User{}, fmt.Errorf("while reading username: %w", err)
 		}
@@ -40,14 +41,14 @@ askForUsername:
 	username = strings.TrimSuffix(username, "\n")
 	user, err := rc.manager.RegisterUser(username, remoteAddr)
 
-	if err != nil { // User already exists. Write error to client and retry process
-		_, err = rc.conn.Write([]byte(UserAlreadyExists))
+	if err != nil { // User already exists. Write error to download and retry process
+		_, err = rw.WriteString(UserAlreadyExists)
 		if err != nil {
 			return user, fmt.Errorf("while writing to %s: %w", remoteAddr, err)
 		}
 		goto askForUsername
 	}
-	_, err = rc.conn.Write([]byte(RegisteredSuccessfully))
+	_, err = rw.WriteString(RegisteredSuccessfully)
 	if err != nil {
 		return user, fmt.Errorf("while writing to %s: %w", remoteAddr, err)
 	}

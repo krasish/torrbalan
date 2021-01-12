@@ -69,7 +69,7 @@ func (s *Server) parseCommandAndExecute(parser *command.Parser, remoteAddr strin
 	if err != nil {
 		log.Printf("while parsing command of %s: %v\n", remoteAddr, err)
 		if _, err := parser.Conn.Write([]byte("your command could not be parsed\n")); err != nil {
-			log.Printf("could not send message to client for failed parsing: %v\n", err)
+			log.Printf("could not send message to download for failed parsing: %v\n", err)
 		}
 	}
 	if parser.ConnectionClosed {

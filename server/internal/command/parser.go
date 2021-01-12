@@ -3,10 +3,11 @@ package command
 import (
 	"bufio"
 	"fmt"
-	"github.com/krasish/torrbalan/server/internal/memory"
 	"io"
 	"net"
 	"regexp"
+
+	"github.com/krasish/torrbalan/server/internal/memory"
 )
 
 const (
@@ -37,7 +38,7 @@ func newRegexSet() *regexSet {
 }
 
 type Doable interface {
-	//Do method executes the command. It should return an error for the server side
+	//Do method executes the command. It should return an error for the uploader side
 	//and its callers should handle those errors. It should also write errors messages
 	//to clients.
 	Do() error

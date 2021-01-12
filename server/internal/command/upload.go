@@ -24,13 +24,14 @@ func (c *UploadCommand) Do() error {
 	if err != nil {
 		errorMessage := fmt.Sprintf("Could not upload file %q", c.fileName)
 
-		if fae, ok := err.(memory.FileAlreadyExistsError); ok {
-			errorMessage = fae.Error()
+		if fileError, ok := err.(memory.FileAlreadyExistsError); ok {
+			errorMessage = fileError.Error()
+			err = fileError.Wrapped
 		}
 
 		if _, err := c.conn.Write([]byte(errorMessage)); err != nil {
-			return fmt.Errorf("while writing error message to client: %w", err)
+			return fmt.Errorf("while writing error message to download: %w", err)
 		}
 	}
-	return nil
+	return err
 }
