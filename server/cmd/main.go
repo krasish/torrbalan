@@ -15,6 +15,6 @@ func main() {
 	s := server.NewServer(serverConfig)
 	err = s.Run()
 	if err != nil {
-		log.Fatalf("could not start uploader: %v", err)
+		log.Fatalf("could not start upload: %v", err)
 	}
 }

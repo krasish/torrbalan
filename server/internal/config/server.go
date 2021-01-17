@@ -9,7 +9,7 @@ type Server struct {
 
 func NewServer(port string, limit uint) (*Server, error) {
 	if limit < 1 {
-		return nil, errors.New("attempted to start uploader with zero limit")
+		return nil, errors.New("attempted to start upload with zero limit")
 	}
 	return &Server{
 		Port:             port,

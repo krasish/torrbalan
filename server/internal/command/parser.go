@@ -13,7 +13,7 @@ import (
 const (
 	uploadPattern     = `^[\s]*UPLOAD[\s]+([0-9A-Za-z.\-_\+$]+)[\s]+([A-Fa-f0-9]{64})[\s]*$`
 	stopUploadPattern = `^[\s]*STOP_UPLOAD[\s]+([0-9A-Za-z.\-_\+$]+)[\s]*$`
-	downloadPattern   = `^[\s]*DOWNLOAD[\s]+([0-9A-Za-z.\-_\+$]+)[\s]*$`
+	downloadPattern   = `^[\s]*GET_OWNERS[\s]+([0-9A-Za-z.\-_\+$]+)[\s]*$`
 	disconnectPattern = `^[\s]*DISCONNECT[\s]*$`
 
 	uploadCaptureGroupsCount     = 3
@@ -38,7 +38,7 @@ func newRegexSet() *regexSet {
 }
 
 type Doable interface {
-	//Do method executes the command. It should return an error for the uploader side
+	//Do method executes the command. It should return an error for the upload side
 	//and its callers should handle those errors. It should also write errors messages
 	//to clients.
 	Do() error
@@ -88,26 +88,26 @@ func (p *Parser) Parse() (Doable, error) {
 	return NewInvalidCommand(p.Conn), nil
 }
 
-func (p *Parser) uploadCommand(commandString string) (Doable, error) {
-	captureGroups := p.regexSet.upload.FindStringSubmatch(commandString)
+func (p *Parser) uploadCommand(cmd string) (Doable, error) {
+	captureGroups := p.regexSet.upload.FindStringSubmatch(cmd)
 	if cgc := len(captureGroups); cgc != uploadCaptureGroupsCount {
 		return nil, fmt.Errorf("request matched upload regex but got %d capture groups insted of %d", cgc, uploadCaptureGroupsCount)
 	}
 	return NewUploadCommand(p.Conn, p.user, p.fm, captureGroups[1], captureGroups[2]), nil
 }
 
-func (p *Parser) stopUploadCommand(commandString string) (Doable, error) {
-	captureGroups := p.regexSet.stopUpload.FindStringSubmatch(commandString)
+func (p *Parser) stopUploadCommand(cmd string) (Doable, error) {
+	captureGroups := p.regexSet.stopUpload.FindStringSubmatch(cmd)
 	if cgc := len(captureGroups); cgc != stopUploadCaptureGroupsCount {
 		return nil, fmt.Errorf("request matched stop-upload regex but got %d capture groups insted of %d", cgc, stopUploadCaptureGroupsCount)
 	}
 	return NewStopUploadCommand(p.Conn, p.user, p.fm, captureGroups[1]), nil
 }
 
-func (p *Parser) downloadCommand(commandString string) (Doable, error) {
-	captureGroups := p.regexSet.download.FindStringSubmatch(commandString)
+func (p *Parser) downloadCommand(cmd string) (Doable, error) {
+	captureGroups := p.regexSet.download.FindStringSubmatch(cmd)
 	if cgc := len(captureGroups); cgc != downloadCaptureGroupsCount {
 		return nil, fmt.Errorf("request matched download regex but got %d capture groups insted of %d", cgc, downloadCaptureGroupsCount)
 	}
-	return NewDownloadCommand(p.Conn, p.fm, captureGroups[1]), nil
+	return NewGetOwnersCommand(p.Conn, p.fm, captureGroups[1]), nil
 }

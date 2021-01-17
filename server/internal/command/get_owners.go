@@ -7,17 +7,17 @@ import (
 	"github.com/krasish/torrbalan/server/internal/memory"
 )
 
-type DownloadCommand struct {
+type GetOwnersCommand struct {
 	conn     net.Conn
 	fm       *memory.FileManager
 	filename string
 }
 
-func NewDownloadCommand(conn net.Conn, fm *memory.FileManager, filename string) *DownloadCommand {
-	return &DownloadCommand{conn: conn, fm: fm, filename: filename}
+func NewGetOwnersCommand(conn net.Conn, fm *memory.FileManager, filename string) *GetOwnersCommand {
+	return &GetOwnersCommand{conn: conn, fm: fm, filename: filename}
 }
 
-func (c DownloadCommand) Do() error {
+func (c GetOwnersCommand) Do() error {
 	fileInfo, err := c.fm.GetFileInfo(c.filename)
 	if err != nil {
 		if _, err := c.conn.Write([]byte(fmt.Sprintf("Could not find %q", c.filename))); err != nil {

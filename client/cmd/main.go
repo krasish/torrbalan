@@ -1,40 +1,19 @@
 package main
 
 import (
-	"bufio"
-	"fmt"
 	"log"
-	"net"
-	"os"
+
+	"github.com/krasish/torrbalan/client/internal/client"
+	"github.com/krasish/torrbalan/client/internal/config"
 )
 
 func main() {
-	conn, err := net.Dial("tcp", "localhost:8080")
+	cfg, err := config.NewClient("localhost:8080", 2)
 	if err != nil {
-		fmt.Printf("could not dial: %v", err)
+		log.Fatalf("while processing configuration: %v", err)
 	}
-	reader := bufio.NewReader(os.Stdin)
-	go func() {
-		for {
-			bytes := make([]byte, 100)
-			n, err2 := conn.Read(bytes)
-			if err2 != nil {
-				log.Fatalf("while reading: %v read %d", err, n)
-			}
-			fmt.Println(string(bytes))
-		}
-	}()
-
-	for {
-		fmt.Print("> ")
-	text, err := reader.ReadString('\n')
-	if err != nil {
-		fmt.Printf("could not read: %v", err)
-		continue
-	}
-		if _, err := conn.Write([]byte(text)); err != nil {
-			fmt.Printf("could not write: %v", err)
-		}
-
+	cli := client.NewClient(cfg)
+	if err = cli.Start(); err != nil {
+		log.Fatalf("while starting client: %v", err)
 	}
 }

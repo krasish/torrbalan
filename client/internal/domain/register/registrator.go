@@ -1,4 +1,4 @@
-package download
+package register
 
 import (
 	"bufio"
@@ -7,25 +7,39 @@ import (
 	"os"
 )
 
+const UserAlreadyExists = "UAE"
+const RegisteredSuccessfully = "RS"
+
 type Registrator struct {
 	conn net.Conn
+}
+
+func NewRegistrator(conn net.Conn) *Registrator {
+	return &Registrator{conn: conn}
 }
 
 func (r Registrator) Register() error {
 	rw := bufio.NewReadWriter(bufio.NewReader(r.conn), bufio.NewWriter(r.conn))
 
+sendUsername:
 	username := r.getUsername()
 	if _, err := rw.WriteString(username + "\n"); err != nil {
 		return fmt.Errorf("while writing to server: %w", err)
 	}
 
-	//TODO: Finish implementation
-	_, err := rw.ReadString('\n')
+	resp, err := rw.ReadString('\n')
 	if err != nil {
-		return fmt.Errorf("while rading from server: %w", err)
+		return fmt.Errorf("while reading from server: %w", err)
 	}
 
-	return nil
+	if resp == UserAlreadyExists {
+		fmt.Println("That didn't work. Try again!")
+		goto sendUsername
+	} else if resp == RegisteredSuccessfully {
+		return nil
+	} else {
+		return fmt.Errorf("could not register. Server responded: %s", resp)
+	}
 }
 
 func (r Registrator) getUsername() (username string) {
