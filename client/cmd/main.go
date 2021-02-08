@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	cfg, err := config.NewClient("localhost:8080", 2)
+	cfg, err := config.NewClient("localhost:8080", 2, 2)
 	if err != nil {
 		log.Fatalf("while processing configuration: %v", err)
 	}

@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/krasish/torrbalan/client/internal/domain/command"
+
 	"github.com/krasish/torrbalan/client/internal/domain/connection"
 
 	"github.com/krasish/torrbalan/client/internal/domain/upload"
-
-	"github.com/krasish/torrbalan/client/internal/domain/register"
 
 	"github.com/krasish/torrbalan/client/internal/config"
 
@@ -20,6 +20,7 @@ type Client struct {
 	d download.Downloader
 	u upload.Uploader
 	c connection.ServerCommunicator
+	i command.Interpreter
 }
 
 func NewClient(cfg config.Client) Client {
@@ -31,10 +32,7 @@ func (c Client) Start() error {
 	if err != nil {
 		return fmt.Errorf("while dialing server: %w", err)
 	}
-	r := register.NewRegistrator(conn)
-	if err = r.Register(); err != nil {
-		return fmt.Errorf("while registering: %w", err)
-	}
+	c.register()
 	c.d = download.NewDownloader(c.ConcurrentDownloads, conn)
 	c.u = upload.NewUploader(c.ConcurrentUploads)
 
@@ -42,12 +40,16 @@ func (c Client) Start() error {
 	go c.d.Start()
 	go c.u.Start()
 
-	c.processCommands()
 	return nil
 }
 
-func (c Client) processCommands() {
+func (c Client) register() {
 	for {
-
+		username := c.i.GetUsername()
+		if err := c.c.Register(username); err != nil {
+			fmt.Printf("Unsuccessful registration: %v", err)
+			continue
+		}
+		break
 	}
 }

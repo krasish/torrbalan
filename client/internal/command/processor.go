@@ -6,6 +6,8 @@ import (
 	"os"
 	"regexp"
 
+	"github.com/krasish/torrbalan/client/internal/domain/upload"
+
 	"github.com/krasish/torrbalan/client/internal/domain/download"
 
 	"github.com/krasish/torrbalan/client/internal/domain/connection"
@@ -21,9 +23,10 @@ const (
 
 type Processor struct {
 	c        connection.ServerCommunicator
+	d        download.Downloader
+	u        upload.Uploader
 	regexes  map[string]*regexp.Regexp
 	stopChan chan struct{}
-	d        download.Downloader
 }
 
 func NewProcessor(c connection.ServerCommunicator) *Processor {
@@ -59,11 +62,18 @@ func (p Processor) Process() {
 
 func (p Processor) download(cmd string) {
 	captureGroups := p.regexes[DownloadKey].FindStringSubmatch(cmd)
-	info := download.DownloadInfo{
+	info := download.Info{
 		Filename:    captureGroups[1],
 		PeerAddress: captureGroups[2],
 	}
 	p.d.Download(info)
+}
+
+func (p Processor) upload(cmd string) {
+	captureGroups := p.regexes[UploadKey].FindStringSubmatch(cmd)
+	hash := p.u.AddFile(captureGroups[1])
+	p.c.StartUploading()
+
 }
 
 func (p Processor) getOwners(cmd string) {
