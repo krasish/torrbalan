@@ -10,6 +10,9 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
+
+	"github.com/krasish/torrbalan/client/internal/domain/download"
 
 	"github.com/krasish/torrbalan/client/internal/logutil"
 )
@@ -17,13 +20,16 @@ import (
 type Uploader struct {
 	port  string
 	q     chan struct{}
-	files map[string]os.FileInfo
+	files map[string]string
+	m     *sync.RWMutex
 }
 
 func NewUploader(concurrentUploads, port uint) Uploader {
 	return Uploader{
-		q:    make(chan struct{}, concurrentUploads),
-		port: strconv.Itoa(int(port)),
+		q:     make(chan struct{}, concurrentUploads),
+		port:  strconv.Itoa(int(port)),
+		files: make(map[string]string),
+		m:     &sync.RWMutex{},
 	}
 }
 
@@ -51,25 +57,25 @@ func (u Uploader) acceptPeers(listener net.Listener) {
 	go u.processUploading(conn)
 }
 
-func (u Uploader) initialContract(conn net.Conn) (os.FileInfo, error) {
+func (u Uploader) initialContract(conn net.Conn) (string, error) {
 	readWriter := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 	fileName, err := readWriter.ReadString('$')
 	fileName = strings.TrimSuffix(fileName, "$")
 	if err != nil {
-		return nil, fmt.Errorf("while waiting for first response from peer: %v", err)
+		return "", fmt.Errorf("while waiting for first response from peer: %v", err)
 	}
 
 	if _, ok := u.files[fileName]; !ok {
 		if _, err := readWriter.WriteString("BAD$"); err != nil {
 			logutil.LogOnErr(conn.Close)
-			return nil, fmt.Errorf("while writing bad response to client: %w", err)
+			return "", fmt.Errorf("while writing bad response to client: %w", err)
 		}
-		return nil, fmt.Errorf("%s asked for file %s which was not found", conn.RemoteAddr().String(), fileName)
+		return "", fmt.Errorf("%s asked for file %s which was not found", conn.RemoteAddr().String(), fileName)
 	}
 
 	if _, err := readWriter.WriteString("OK$"); err != nil {
 		logutil.LogOnErr(conn.Close)
-		return nil, fmt.Errorf("while writing ok response to client: %w", err)
+		return "", fmt.Errorf("while writing ok response to client: %w", err)
 	}
 	return u.files[fileName], nil
 }
@@ -85,7 +91,9 @@ func (u Uploader) AddFile(filePath string) (hash string, name string, err error)
 	if err != nil {
 		return "", "", fmt.Errorf("while getting file info: %v", err)
 	}
-	u.files[fileInfo.Name()] = fileInfo
+	u.m.Lock()
+	u.files[fileInfo.Name()] = filePath
+	u.m.Unlock()
 
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
@@ -96,12 +104,26 @@ func (u Uploader) AddFile(filePath string) (hash string, name string, err error)
 
 func (u Uploader) processUploading(conn net.Conn) {
 	defer func() { u.q <- struct{}{} }()
+	defer logutil.LogOnErr(conn.Close)
 
-	fileInfo, err := u.initialContract(conn)
+	filePath, err := u.initialContract(conn)
 	if err != nil {
 		log.Printf("An error occurred while establishinng initial contract with %s: %v", conn.RemoteAddr().String(), err)
 		return
 	}
+	file, err := os.Open(filePath)
+	if err != nil {
+		log.Printf("An error occurred while opening file %q: %v", filePath, err)
+		return
+	}
+	defer logutil.LogOnErr(file.Close)
 
-	os.OpenFile(fi)
+	reader, writer := bufio.NewReader(file), bufio.NewWriter(conn)
+	errorMessages := [3]string{
+		fmt.Sprintf("Stopping upload of file %q to %s", file.Name(), conn.RemoteAddr().String()),
+		fmt.Sprintf("An error occurred while reading from file %q: %%v", file.Name()),
+		fmt.Sprintf("An error occurred while writing to %s: %%v", conn.RemoteAddr().String()),
+	}
+
+	download.ReadWriteLoop(reader, writer, errorMessages)
 }

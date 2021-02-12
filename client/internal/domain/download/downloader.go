@@ -12,7 +12,7 @@ import (
 	"github.com/krasish/torrbalan/client/internal/logutil"
 )
 
-const BUFFER_SIZE = 1024
+const BufferSize = 1024
 
 type Info struct {
 	Filename    string
@@ -86,20 +86,33 @@ func (d Downloader) processDownloading(file *os.File, conn net.Conn) {
 		return
 	}
 
-	bytes := make([]byte, BUFFER_SIZE)
 	reader, writer := bufio.NewReader(conn), bufio.NewWriter(file)
+	errorMessages := [3]string{
+		fmt.Sprintf("Stopping download of file %q from %s", file.Name(), conn.RemoteAddr().String()),
+		fmt.Sprintf("An error occurred while reading from %s: %%v", conn.RemoteAddr().String()),
+		fmt.Sprintf("An error occurred while writing in file %s: %%v", file.Name()),
+	}
 
+	ReadWriteLoop(reader, writer, errorMessages)
+}
+
+func ReadWriteLoop(reader *bufio.Reader, writer *bufio.Writer, errorMessages [3]string) {
+	bytes := make([]byte, BufferSize)
 	for {
 		n, err := reader.Read(bytes)
 		if err == io.EOF {
-			break
+			log.Printf(errorMessages[0])
+			return
 		} else if err != nil {
-			log.Printf("An error occurred while reading from %s: %v", conn.RemoteAddr().String(), err)
+			log.Printf(errorMessages[1], err)
 			return
 		}
 		_, err = writer.Write(bytes[:n])
-		if err != nil {
-			log.Printf("An error occurred while writing in file %s: %v", file.Name(), err)
+		if err == io.EOF {
+			log.Printf(errorMessages[0])
+			return
+		} else if err != nil {
+			log.Printf(errorMessages[2], err)
 			return
 		}
 	}
