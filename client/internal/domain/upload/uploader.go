@@ -21,7 +21,7 @@ type Uploader struct {
 	port  string
 	q     chan struct{}
 	files map[string]string
-	m     *sync.RWMutex
+	rw    *sync.RWMutex
 }
 
 func NewUploader(concurrentUploads, port uint) Uploader {
@@ -29,7 +29,7 @@ func NewUploader(concurrentUploads, port uint) Uploader {
 		q:     make(chan struct{}, concurrentUploads),
 		port:  strconv.Itoa(int(port)),
 		files: make(map[string]string),
-		m:     &sync.RWMutex{},
+		rw:    &sync.RWMutex{},
 	}
 }
 
@@ -43,6 +43,28 @@ func (u Uploader) Start() error {
 	for {
 		u.acceptPeers(listener)
 	}
+}
+
+//AddFile adds a file in current uploader and returns its name a SHA256 calculated for the file added.
+func (u Uploader) AddFile(filePath string) (hash string, name string, err error) {
+	f, err := os.Open(filePath)
+	if err != nil {
+		return "", "", fmt.Errorf("while opening file: %v", err)
+	}
+	defer logutil.LogOnErr(f.Close)
+	fileInfo, err := f.Stat()
+	if err != nil {
+		return "", "", fmt.Errorf("while getting file info: %v", err)
+	}
+	u.rw.Lock()
+	u.files[fileInfo.Name()] = filePath
+	u.rw.Unlock()
+
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		log.Printf("an error occured while calculating hash for file: %v", err)
+	}
+	return string(h.Sum(nil)), fileInfo.Name(), err
 }
 
 func (u Uploader) acceptPeers(listener net.Listener) {
@@ -65,41 +87,22 @@ func (u Uploader) initialContract(conn net.Conn) (string, error) {
 		return "", fmt.Errorf("while waiting for first response from peer: %v", err)
 	}
 
+	u.rw.RLock()
 	if _, ok := u.files[fileName]; !ok {
+		u.rw.RUnlock()
 		if _, err := readWriter.WriteString("BAD$"); err != nil {
 			logutil.LogOnErr(conn.Close)
 			return "", fmt.Errorf("while writing bad response to client: %w", err)
 		}
 		return "", fmt.Errorf("%s asked for file %s which was not found", conn.RemoteAddr().String(), fileName)
 	}
+	u.rw.RUnlock()
 
 	if _, err := readWriter.WriteString("OK$"); err != nil {
 		logutil.LogOnErr(conn.Close)
 		return "", fmt.Errorf("while writing ok response to client: %w", err)
 	}
 	return u.files[fileName], nil
-}
-
-//AddFile adds a file in current uploader and returns its name a SHA256 calculated for the file added.
-func (u Uploader) AddFile(filePath string) (hash string, name string, err error) {
-	f, err := os.Open(filePath)
-	if err != nil {
-		return "", "", fmt.Errorf("while opening file: %v", err)
-	}
-	defer logutil.LogOnErr(f.Close)
-	fileInfo, err := f.Stat()
-	if err != nil {
-		return "", "", fmt.Errorf("while getting file info: %v", err)
-	}
-	u.m.Lock()
-	u.files[fileInfo.Name()] = filePath
-	u.m.Unlock()
-
-	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
-		log.Printf("an error occured while calculating hash for file: %v", err)
-	}
-	return string(h.Sum(nil)), fileInfo.Name(), err
 }
 
 func (u Uploader) processUploading(conn net.Conn) {

@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"log"
 	"net"
 
 	"github.com/krasish/torrbalan/client/internal/domain/command"
@@ -19,7 +20,7 @@ type Client struct {
 	config.Client
 	d download.Downloader
 	u upload.Uploader
-	c connection.ServerCommunicator
+	c *connection.ServerCommunicator
 	i command.Interpreter
 }
 
@@ -32,14 +33,18 @@ func (c Client) Start() error {
 	if err != nil {
 		return fmt.Errorf("while dialing server: %w", err)
 	}
+	stopChan := make(chan struct{})
+	c.c = connection.NewServerCommunicator(conn, stopChan)
 	c.register()
 	c.d = download.NewDownloader(c.ConcurrentDownloads, conn)
-	c.u = upload.NewUploader(c.ConcurrentUploads)
+	c.u = upload.NewUploader(c.ConcurrentUploads, c.Port)
 
 	go c.c.Listen()
 	go c.d.Start()
 	go c.u.Start()
 
+	<-stopChan
+	log.Println("Stop signal received. Shutting down...")
 	return nil
 }
 
