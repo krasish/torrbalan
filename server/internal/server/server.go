@@ -81,12 +81,10 @@ func (s *Server) parseCommandAndExecute(parser *command.Parser, remoteAddr strin
 }
 
 func (s *Server) closeConnection(conn net.Conn, name string, registeredSuccessfully bool) {
-	<-s.limiter
-
 	if err := conn.Close(); err != nil {
 		log.Printf("could not close connection with %s: %v", name, err)
 	}
-
+	defer func() { <-s.limiter }()
 	if registeredSuccessfully {
 		if err := s.DeleteUser(name); err != nil {
 			log.Printf("could not delete user %q: %v", name, err)

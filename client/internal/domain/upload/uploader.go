@@ -12,7 +12,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/krasish/torrbalan/client/internal/client"
+	"github.com/krasish/torrbalan/client/internal/domain/connection"
 
 	"github.com/krasish/torrbalan/client/internal/domain/download"
 
@@ -41,7 +41,7 @@ func (u Uploader) Start() {
 	listener, err := net.Listen("tcp", ":"+u.port)
 	if err != nil {
 		log.Printf("an error occured while starting listener for uploader: %v", err)
-		client.TryWrite(u.stopChan)
+		connection.TryWrite(u.stopChan)
 		return
 	}
 	log.Printf("Started listeling on %s\n", listener.Addr().String())

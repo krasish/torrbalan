@@ -8,8 +8,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/krasish/torrbalan/client/internal/client"
-
 	"github.com/krasish/torrbalan/client/internal/domain/upload"
 
 	"github.com/krasish/torrbalan/client/internal/domain/download"
@@ -96,7 +94,7 @@ func (p Processor) getUsername() (username string) {
 
 func (p Processor) disconnect() {
 	p.c.Disconnect()
-	client.TryWrite(p.stopChan)
+	connection.TryWrite(p.stopChan)
 }
 
 func (p Processor) download(cmd string) {

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"time"
 
 	"github.com/krasish/torrbalan/client/internal/command"
 
@@ -50,14 +49,4 @@ func (c Client) Start() error {
 	<-stopChan
 	log.Println("Stop signal received. Shutting down...")
 	return nil
-}
-
-func TryWrite(ch chan<- struct{}) {
-	timer := time.NewTimer(500 * time.Millisecond)
-	select {
-	case ch <- struct{}{}:
-		return
-	case <-timer.C:
-		return
-	}
 }
