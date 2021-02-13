@@ -26,7 +26,7 @@ type Downloader struct {
 	q chan Info
 }
 
-func NewDownloader(concurrentDownloads uint, conn net.Conn) Downloader {
+func NewDownloader(concurrentDownloads uint) Downloader {
 	return Downloader{
 		q: make(chan Info, concurrentDownloads),
 	}
@@ -59,7 +59,7 @@ func (d Downloader) Download(info Info) {
 func (d Downloader) connectToPeer(info Info) (net.Conn, error) {
 	conn, err := net.Dial("tcp", info.PeerAddress)
 	if err != nil {
-		return nil, fmt.Errorf("while trying to connecto to %s: %w", info.PeerAddress, err)
+		return nil, fmt.Errorf("while trying to connect to %s: %w", info.PeerAddress, err)
 	}
 	return conn, nil
 }

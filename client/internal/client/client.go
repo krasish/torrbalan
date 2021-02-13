@@ -35,7 +35,7 @@ func (c Client) Start() error {
 	}
 	stopChan := make(chan struct{})
 	c.c = connection.NewServerCommunicator(conn, stopChan)
-	c.d = download.NewDownloader(c.ConcurrentDownloads, conn)
+	c.d = download.NewDownloader(c.ConcurrentDownloads)
 	c.u = upload.NewUploader(c.ConcurrentUploads, c.Port, stopChan)
 
 	c.p = command.NewProcessor(c.c, c.d, c.u)

@@ -40,7 +40,7 @@ func NewProcessor(c *connection.ServerCommunicator, d download.Downloader, u upl
 		u: u,
 		regexes: map[string]*regexp.Regexp{
 			DisconnectKey: regexp.MustCompile(`^[\s]*exit[\s]*$`),
-			DownloadKey:   regexp.MustCompile(`^[\s]*download[\s]+([0-9A-Za-z.\-_+$]+)[\s]+([^\s]+)[\s]*$`),
+			DownloadKey:   regexp.MustCompile(`^[\s]*download[\s]+([0-9A-Za-z.\-_+$]+)[\s]+([^\s]+)[\s]+([^\s]+)[\s]*$`),
 			GetOwnersKey:  regexp.MustCompile(`^[\s]*get-owners[\s]+([0-9A-Za-z.\-_+$]+)[\s]*$`),
 			StopUploadKey: regexp.MustCompile(`^[\s]*stop-upload[\s]+([0-9A-Za-z.\-_+$]+)[\s]*$`),
 			UploadKey:     regexp.MustCompile(`^[\s]*upload[\s]+([^\0\s]+)[\s]*$`),
@@ -110,7 +110,8 @@ func (p Processor) download(cmd string) {
 	captureGroups := p.regexes[DownloadKey].FindStringSubmatch(cmd)
 	info := download.Info{
 		Filename:    captureGroups[1],
-		PeerAddress: captureGroups[2],
+		PathToSave:  captureGroups[2],
+		PeerAddress: captureGroups[3],
 	}
 	p.d.Download(info)
 }

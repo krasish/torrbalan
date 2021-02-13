@@ -10,6 +10,9 @@ import (
 )
 
 func main() {
+	if len(os.Args) < 2 {
+		log.Fatalf("wrong number of arguments")
+	}
 	serverAddress := os.Args[1]
 	port, err := freeport.GetFreePort()
 	if err != nil {
