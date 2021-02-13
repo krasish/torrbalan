@@ -4,10 +4,10 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"net"
-	"time"
+
+	"github.com/krasish/torrbalan/client/internal/eofutil"
 )
 
 const (
@@ -31,7 +31,7 @@ func NewServerCommunicator(conn net.Conn, stopChan chan struct{}) *ServerCommuni
 func (c ServerCommunicator) Listen() {
 	for {
 		reader := bufio.NewReader(c.conn)
-		readString, err := ReadCheckEOF(reader, '\n', c.stopChan)
+		readString, err := eofutil.ReadServerCheckEOF(reader, '\n', c.stopChan)
 		if err != nil {
 			log.Printf("while reading form server: %v", err)
 		}
@@ -42,11 +42,11 @@ func (c ServerCommunicator) Listen() {
 func (c ServerCommunicator) Register(username string) error {
 	rw := bufio.NewReadWriter(bufio.NewReader(c.conn), bufio.NewWriter(c.conn))
 
-	if err := WriteCheckEOF(rw.Writer, username+"\n", c.stopChan); err != nil {
+	if err := eofutil.WriteServerCheckEOF(rw.Writer, username+"\n", c.stopChan); err != nil {
 		return fmt.Errorf("while writing to server: %w", err)
 	}
 
-	resp, err := ReadCheckEOF(rw.Reader, '\n', c.stopChan)
+	resp, err := eofutil.ReadServerCheckEOF(rw.Reader, '\n', c.stopChan)
 	if err != nil {
 		return fmt.Errorf("while reading from server: %w", err)
 	}
@@ -63,7 +63,7 @@ func (c ServerCommunicator) Register(username string) error {
 func (c ServerCommunicator) GetOwners(filename string) {
 	rw := bufio.NewWriter(c.conn)
 
-	err := WriteCheckEOF(rw, fmt.Sprintf(GetOwnersPattern, filename), c.stopChan)
+	err := eofutil.WriteServerCheckEOF(rw, fmt.Sprintf(GetOwnersPattern, filename), c.stopChan)
 	if err != nil {
 		log.Printf("an error while getting owners from server: %v\n", err)
 	}
@@ -72,7 +72,7 @@ func (c ServerCommunicator) GetOwners(filename string) {
 func (c ServerCommunicator) StartUploading(fileName string, fileHash string) {
 	rw := bufio.NewWriter(c.conn)
 
-	err := WriteCheckEOF(rw, fmt.Sprintf(UploadPattern, fileName, fileHash), c.stopChan)
+	err := eofutil.WriteServerCheckEOF(rw, fmt.Sprintf(UploadPattern, fileName, fileHash), c.stopChan)
 	if err != nil {
 		log.Printf("an error while writing an upload command to server: %v\n", err)
 	}
@@ -81,7 +81,7 @@ func (c ServerCommunicator) StartUploading(fileName string, fileHash string) {
 func (c ServerCommunicator) StopUploading(fileName string) {
 	rw := bufio.NewWriter(c.conn)
 
-	err := WriteCheckEOF(rw, fmt.Sprintf(StopUploadPattern, fileName), c.stopChan)
+	err := eofutil.WriteServerCheckEOF(rw, fmt.Sprintf(StopUploadPattern, fileName), c.stopChan)
 	if err != nil {
 		log.Printf("an error while writing a stop-upload command to server: %v\n", err)
 	}
@@ -90,43 +90,8 @@ func (c ServerCommunicator) StopUploading(fileName string) {
 func (c ServerCommunicator) Disconnect() {
 	rw := bufio.NewWriter(c.conn)
 
-	err := WriteCheckEOF(rw, DisconnectRequest, c.stopChan)
+	err := eofutil.WriteServerCheckEOF(rw, DisconnectRequest, c.stopChan)
 	if err != nil {
 		log.Printf("an error while disconnecting from server: %v\n", err)
-	}
-}
-
-func WriteCheckEOF(writer *bufio.Writer, s string, stopChan chan<- struct{}) error {
-	if _, err := writer.WriteString(s); err != nil {
-		if err == io.EOF {
-			log.Println("EOF while writing to server.")
-			TryWrite(stopChan)
-		} else {
-			return err
-		}
-	}
-	return nil
-}
-
-func ReadCheckEOF(reader *bufio.Reader, delim byte, stopChan chan<- struct{}) (string, error) {
-	read, err := reader.ReadString(delim)
-	if err != nil {
-		if err == io.EOF {
-			log.Println("EOF while reading from server.")
-			TryWrite(stopChan)
-			return "", nil
-		}
-		return "", err
-	}
-	return read, nil
-}
-
-func TryWrite(ch chan<- struct{}) {
-	timer := time.NewTimer(500 * time.Millisecond)
-	select {
-	case ch <- struct{}{}:
-		return
-	case <-timer.C:
-		return
 	}
 }

@@ -33,7 +33,6 @@ func (rc *RegisterCommand) Do() (memory.User, error) {
 
 askForUsername:
 	for username, err = rw.ReadString('\n'); err != nil; username, err = rw.ReadString('\n') {
-		fmt.Println(username)
 		if err == io.EOF {
 			return memory.User{}, fmt.Errorf("while reading username: %w", err)
 		}

@@ -38,6 +38,7 @@ func (s *Server) Run() error {
 		if err != nil {
 			log.Printf("An error ocurred while acceppting a connection: %v\n", err)
 		}
+
 		s.limiter <- struct{}{}
 		go s.handleConnection(conn)
 	}
