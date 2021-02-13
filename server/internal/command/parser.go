@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	uploadPattern     = `^[\s]*UPLOAD[\s]+([0-9A-Za-z.\-_\+$]+)[\s]+([A-Fa-f0-9]{64})[\s]*$`
+	uploadPattern     = `^[\s]*UPLOAD[\s]+([0-9A-Za-z.\-_\+$]+)[\s]+"(.{32,})"[\s]*$`
 	stopUploadPattern = `^[\s]*STOP_UPLOAD[\s]+([0-9A-Za-z.\-_\+$]+)[\s]*$`
 	getOwnersPattern  = `^[\s]*GET_OWNERS[\s]+([0-9A-Za-z.\-_\+$]+)[\s]*$`
 	disconnectPattern = `^[\s]*DISCONNECT[\s]*$`
@@ -24,7 +24,7 @@ const (
 type regexSet struct {
 	upload     *regexp.Regexp
 	stopUpload *regexp.Regexp
-	download   *regexp.Regexp
+	getOwners  *regexp.Regexp
 	disconnect *regexp.Regexp
 }
 
@@ -32,7 +32,7 @@ func newRegexSet() *regexSet {
 	return &regexSet{
 		upload:     regexp.MustCompile(uploadPattern),
 		stopUpload: regexp.MustCompile(stopUploadPattern),
-		download:   regexp.MustCompile(getOwnersPattern),
+		getOwners:  regexp.MustCompile(getOwnersPattern),
 		disconnect: regexp.MustCompile(disconnectPattern),
 	}
 }
@@ -79,8 +79,8 @@ func (p *Parser) Parse() (Doable, error) {
 		return p.uploadCommand(commandString)
 	} else if p.regexSet.stopUpload.MatchString(commandString) {
 		return p.stopUploadCommand(commandString)
-	} else if p.regexSet.download.MatchString(commandString) {
-		return p.downloadCommand(commandString)
+	} else if p.regexSet.getOwners.MatchString(commandString) {
+		return p.getOwnersCommand(commandString)
 	} else if p.regexSet.disconnect.MatchString(commandString) {
 		p.ConnectionClosed = true
 		return nil, nil
@@ -104,10 +104,10 @@ func (p *Parser) stopUploadCommand(cmd string) (Doable, error) {
 	return NewStopUploadCommand(p.Conn, p.user, p.fm, captureGroups[1]), nil
 }
 
-func (p *Parser) downloadCommand(cmd string) (Doable, error) {
-	captureGroups := p.regexSet.download.FindStringSubmatch(cmd)
+func (p *Parser) getOwnersCommand(cmd string) (Doable, error) {
+	captureGroups := p.regexSet.getOwners.FindStringSubmatch(cmd)
 	if cgc := len(captureGroups); cgc != getOwnersCaptureGroupsCount {
-		return nil, fmt.Errorf("request matched download regex but got %d capture groups insted of %d", cgc, getOwnersCaptureGroupsCount)
+		return nil, fmt.Errorf("request matched getOwners regex but got %d capture groups insted of %d", cgc, getOwnersCaptureGroupsCount)
 	}
 	return NewGetOwnersCommand(p.Conn, p.fm, captureGroups[1]), nil
 }

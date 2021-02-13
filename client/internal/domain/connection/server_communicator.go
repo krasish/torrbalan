@@ -12,11 +12,13 @@ import (
 
 const (
 	GetOwnersPattern       = "GET_OWNERS %s\n"
-	UploadPattern          = "UPLOAD %s %s\n"
+	UploadPattern          = "UPLOAD %s %q\n"
 	StopUploadPattern      = "STOP_UPLOAD %s\n"
 	DisconnectRequest      = "DISCONNECT\n"
 	UserAlreadyExists      = "UAE\n"
 	RegisteredSuccessfully = "RS\n"
+	ServerMessagesColour   = "\n\033[36m"
+	resetColour            = "\033[0m>"
 )
 
 type ServerCommunicator struct {
@@ -35,7 +37,7 @@ func (c ServerCommunicator) Listen() {
 		if err != nil {
 			log.Printf("cannot read from server: %v", err)
 		}
-		fmt.Println(readString)
+		c.printServerMessage(readString)
 	}
 }
 
@@ -93,4 +95,10 @@ func (c ServerCommunicator) Disconnect() {
 	if err != nil {
 		log.Printf("an error while disconnecting from server: %v\n", err)
 	}
+}
+
+func (c ServerCommunicator) printServerMessage(msg string) {
+	fmt.Println(ServerMessagesColour)
+	fmt.Println(msg)
+	fmt.Print(resetColour)
 }

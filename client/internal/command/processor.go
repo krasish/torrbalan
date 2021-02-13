@@ -33,14 +33,20 @@ type Processor struct {
 	stopChan chan struct{}
 }
 
-func NewProcessor(c *connection.ServerCommunicator) *Processor {
-	return &Processor{c: c, regexes: map[string]*regexp.Regexp{
-		DisconnectKey: regexp.MustCompile(`^[\s]*exit[\s]*$`),
-		DownloadKey:   regexp.MustCompile(`^[\s]*download[\s]+([0-9A-Za-z.\-_+$]+)[\s]+([^\s]+)[\s]*$`),
-		GetOwnersKey:  regexp.MustCompile(`^[\s]*get-owners[\s]+([0-9A-Za-z.\-_+$]+)[\s]*$`),
-		StopUploadKey: regexp.MustCompile(`^[\s]*stop-upload[\s]+([0-9A-Za-z.\-_+$]+)[\s]*$`),
-		UploadKey:     regexp.MustCompile(`^[\s]*upload[\s]+([^\0\s]+)[\s]*$`),
-	}}
+func NewProcessor(c *connection.ServerCommunicator, d download.Downloader, u upload.Uploader) *Processor {
+	return &Processor{
+		c: c,
+		d: d,
+		u: u,
+		regexes: map[string]*regexp.Regexp{
+			DisconnectKey: regexp.MustCompile(`^[\s]*exit[\s]*$`),
+			DownloadKey:   regexp.MustCompile(`^[\s]*download[\s]+([0-9A-Za-z.\-_+$]+)[\s]+([^\s]+)[\s]*$`),
+			GetOwnersKey:  regexp.MustCompile(`^[\s]*get-owners[\s]+([0-9A-Za-z.\-_+$]+)[\s]*$`),
+			StopUploadKey: regexp.MustCompile(`^[\s]*stop-upload[\s]+([0-9A-Za-z.\-_+$]+)[\s]*$`),
+			UploadKey:     regexp.MustCompile(`^[\s]*upload[\s]+([^\0\s]+)[\s]*$`),
+		},
+		stopChan: nil,
+	}
 }
 
 func (p Processor) Register() {
@@ -72,6 +78,7 @@ func (p Processor) Process() {
 		} else {
 			fmt.Println("Invalid command!")
 		}
+		fmt.Println()
 	}
 }
 

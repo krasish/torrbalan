@@ -36,7 +36,7 @@ func (c *UploadCommand) Do() error {
 		}
 
 		if err := eofutil.WriteCheckEOF(writer, errorMessage+"\n", handler); err != nil {
-			return fmt.Errorf("while writing error message to download: %w", err)
+			return fmt.Errorf("while writing error message to getOwners: %w", err)
 		}
 	}
 	return err

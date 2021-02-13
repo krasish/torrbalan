@@ -44,7 +44,7 @@ askForUsername:
 	username = strings.TrimSuffix(username, "\n")
 	user, err := rc.manager.RegisterUser(username, remoteAddr)
 
-	if err != nil { // User already exists. Write error to download and retry process
+	if err != nil { // User already exists. Write error to getOwners and retry process
 		err := eofutil.WriteCheckEOF(rw.Writer, UserAlreadyExists, h)
 		if err != nil {
 			return user, fmt.Errorf("while writing to %s: %w", remoteAddr, err)
