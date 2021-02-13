@@ -12,7 +12,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/krasish/torrbalan/client/internal/domain/connection"
+	"github.com/krasish/torrbalan/client/pkg/eofutil"
 
 	"github.com/krasish/torrbalan/client/internal/domain/download"
 
@@ -41,7 +41,7 @@ func (u Uploader) Start() {
 	listener, err := net.Listen("tcp", ":"+u.port)
 	if err != nil {
 		log.Printf("an error occured while starting listener for uploader: %v", err)
-		connection.TryWrite(u.stopChan)
+		eofutil.TryWrite(u.stopChan)
 		return
 	}
 	log.Printf("Started listeling on %s\n", listener.Addr().String())
@@ -99,11 +99,12 @@ func (u Uploader) initialContract(conn net.Conn) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("while waiting for first response from peer: %v", err)
 	}
+	h := eofutil.LoggingEOFHandler{conn.RemoteAddr().String()}
 
 	u.rw.RLock()
 	if _, ok := u.files[fileName]; !ok {
 		u.rw.RUnlock()
-		if _, err := readWriter.WriteString("BAD$"); err != nil {
+		if err := eofutil.WriteCheckEOF(readWriter.Writer, "BAD$", h); err != nil {
 			logutil.LogOnErr(conn.Close)
 			return "", fmt.Errorf("while writing bad response to client: %w", err)
 		}
@@ -111,7 +112,7 @@ func (u Uploader) initialContract(conn net.Conn) (string, error) {
 	}
 	u.rw.RUnlock()
 
-	if _, err := readWriter.WriteString("OK$"); err != nil {
+	if err := eofutil.WriteCheckEOF(readWriter.Writer, "OK$", h); err != nil {
 		logutil.LogOnErr(conn.Close)
 		return "", fmt.Errorf("while writing ok response to client: %w", err)
 	}

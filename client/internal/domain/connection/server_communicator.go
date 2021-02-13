@@ -7,7 +7,7 @@ import (
 	"log"
 	"net"
 
-	"github.com/krasish/torrbalan/client/internal/eofutil"
+	"github.com/krasish/torrbalan/client/pkg/eofutil"
 )
 
 const (

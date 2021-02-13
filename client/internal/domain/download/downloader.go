@@ -9,6 +9,8 @@ import (
 	"os"
 	"path"
 
+	"github.com/krasish/torrbalan/client/pkg/eofutil"
+
 	"github.com/krasish/torrbalan/client/internal/logutil"
 )
 
@@ -64,11 +66,13 @@ func (d Downloader) connectToPeer(info Info) (net.Conn, error) {
 
 func (d Downloader) initialContract(conn net.Conn, fileName string) error {
 	readWriter := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
-	_, err := readWriter.WriteString(fileName + "$")
+	handler := eofutil.LoggingEOFHandler{conn.RemoteAddr().String()}
+
+	err := eofutil.WriteCheckEOF(readWriter.Writer, fileName+"$", handler)
 	if err != nil {
 		return fmt.Errorf("while writing filename: %v", err)
 	}
-	resp, err := readWriter.ReadString('$')
+	resp, err := eofutil.ReadCheckEOF(readWriter.Reader, '$', handler)
 	if err != nil {
 		return fmt.Errorf("while waiting for first response from peer: %v", err)
 	}
@@ -101,19 +105,22 @@ func ReadWriteLoop(reader *bufio.Reader, writer *bufio.Writer, errorMessages [3]
 	for {
 		n, err := reader.Read(bytes)
 		if err == io.EOF {
-			log.Printf(errorMessages[0])
-			return
+			log.Println(errorMessages[0])
+			break
 		} else if err != nil {
 			log.Printf(errorMessages[1], err)
-			return
+			break
 		}
 		_, err = writer.Write(bytes[:n])
 		if err == io.EOF {
-			log.Printf(errorMessages[0])
-			return
+			log.Println(errorMessages[0])
+			break
 		} else if err != nil {
 			log.Printf(errorMessages[2], err)
-			return
+			break
 		}
+	}
+	if err := writer.Flush(); err != nil {
+		log.Println("final flush to file failed")
 	}
 }
