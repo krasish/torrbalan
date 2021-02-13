@@ -1,9 +1,12 @@
 package server
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"net"
+
+	"github.com/krasish/torrbalan/client/pkg/eofutil"
 
 	"github.com/krasish/torrbalan/server/internal/command"
 	"github.com/krasish/torrbalan/server/internal/config"
@@ -66,11 +69,14 @@ func (s *Server) handleConnection(conn net.Conn) {
 }
 
 func (s *Server) parseCommandAndExecute(parser *command.Parser, remoteAddr string) {
+	writer := bufio.NewWriter(parser.Conn)
+	handler := eofutil.LoggingEOFHandler{DestName: parser.Conn.RemoteAddr().String()}
+
 	doable, err := parser.Parse()
 	if err != nil {
 		log.Printf("while parsing command of %s: %v\n", remoteAddr, err)
-		if _, err := parser.Conn.Write([]byte("your command could not be parsed\n")); err != nil {
-			log.Printf("could not send message to download for failed parsing: %v\n", err)
+		if err := eofutil.WriteCheckEOF(writer, "your command could not be parsed\n", handler); err != nil {
+			log.Printf("could not send message to %s for failed parsing: %v\n", parser.Conn.RemoteAddr().String(), err)
 		}
 	}
 	if parser.ConnectionClosed {

@@ -8,6 +8,8 @@ import (
 	"net"
 	"strings"
 
+	"github.com/krasish/torrbalan/client/pkg/eofutil"
+
 	"github.com/krasish/torrbalan/server/internal/memory"
 )
 
@@ -29,6 +31,7 @@ func (rc *RegisterCommand) Do() (memory.User, error) {
 		remoteAddr = rc.conn.RemoteAddr().String()
 		username   string
 		err        error
+		h          = eofutil.LoggingEOFHandler{DestName: rc.conn.RemoteAddr().String()}
 	)
 
 askForUsername:
@@ -42,13 +45,13 @@ askForUsername:
 	user, err := rc.manager.RegisterUser(username, remoteAddr)
 
 	if err != nil { // User already exists. Write error to download and retry process
-		_, err = rw.WriteString(UserAlreadyExists)
+		err := eofutil.WriteCheckEOF(rw.Writer, UserAlreadyExists, h)
 		if err != nil {
 			return user, fmt.Errorf("while writing to %s: %w", remoteAddr, err)
 		}
 		goto askForUsername
 	}
-	_, err = rw.WriteString(RegisteredSuccessfully)
+	err = eofutil.WriteCheckEOF(rw.Writer, RegisteredSuccessfully, h)
 	if err != nil {
 		return user, fmt.Errorf("while writing to %s: %w", remoteAddr, err)
 	}

@@ -1,8 +1,11 @@
 package command
 
 import (
+	"bufio"
 	"fmt"
 	"net"
+
+	"github.com/krasish/torrbalan/client/pkg/eofutil"
 
 	"github.com/krasish/torrbalan/server/internal/memory"
 )
@@ -20,6 +23,9 @@ func NewUploadCommand(conn net.Conn, user memory.User, fm *memory.FileManager, f
 }
 
 func (c *UploadCommand) Do() error {
+	writer := bufio.NewWriter(c.conn)
+	handler := eofutil.LoggingEOFHandler{DestName: c.conn.RemoteAddr().String()}
+
 	err := c.fm.AddFileInfo(c.fileName, c.fileHash, c.user)
 	if err != nil {
 		errorMessage := fmt.Sprintf("Could not upload file %q", c.fileName)
@@ -29,7 +35,7 @@ func (c *UploadCommand) Do() error {
 			err = fileError.Wrapped
 		}
 
-		if _, err := c.conn.Write([]byte(errorMessage)); err != nil {
+		if err := eofutil.WriteCheckEOF(writer, errorMessage+"\n", handler); err != nil {
 			return fmt.Errorf("while writing error message to download: %w", err)
 		}
 	}

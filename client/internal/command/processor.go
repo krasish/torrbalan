@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/krasish/torrbalan/client/pkg/eofutil"
+
 	"github.com/krasish/torrbalan/client/internal/domain/upload"
 
 	"github.com/krasish/torrbalan/client/internal/domain/download"
@@ -94,7 +96,7 @@ func (p Processor) getUsername() (username string) {
 
 func (p Processor) disconnect() {
 	p.c.Disconnect()
-	connection.TryWrite(p.stopChan)
+	eofutil.TryWrite(p.stopChan)
 }
 
 func (p Processor) download(cmd string) {

@@ -13,12 +13,12 @@ import (
 const (
 	uploadPattern     = `^[\s]*UPLOAD[\s]+([0-9A-Za-z.\-_\+$]+)[\s]+([A-Fa-f0-9]{64})[\s]*$`
 	stopUploadPattern = `^[\s]*STOP_UPLOAD[\s]+([0-9A-Za-z.\-_\+$]+)[\s]*$`
-	downloadPattern   = `^[\s]*GET_OWNERS[\s]+([0-9A-Za-z.\-_\+$]+)[\s]*$`
+	getOwnersPattern  = `^[\s]*GET_OWNERS[\s]+([0-9A-Za-z.\-_\+$]+)[\s]*$`
 	disconnectPattern = `^[\s]*DISCONNECT[\s]*$`
 
 	uploadCaptureGroupsCount     = 3
 	stopUploadCaptureGroupsCount = 2
-	downloadCaptureGroupsCount   = 2
+	getOwnersCaptureGroupsCount  = 2
 )
 
 type regexSet struct {
@@ -32,7 +32,7 @@ func newRegexSet() *regexSet {
 	return &regexSet{
 		upload:     regexp.MustCompile(uploadPattern),
 		stopUpload: regexp.MustCompile(stopUploadPattern),
-		download:   regexp.MustCompile(downloadPattern),
+		download:   regexp.MustCompile(getOwnersPattern),
 		disconnect: regexp.MustCompile(disconnectPattern),
 	}
 }
@@ -106,8 +106,8 @@ func (p *Parser) stopUploadCommand(cmd string) (Doable, error) {
 
 func (p *Parser) downloadCommand(cmd string) (Doable, error) {
 	captureGroups := p.regexSet.download.FindStringSubmatch(cmd)
-	if cgc := len(captureGroups); cgc != downloadCaptureGroupsCount {
-		return nil, fmt.Errorf("request matched download regex but got %d capture groups insted of %d", cgc, downloadCaptureGroupsCount)
+	if cgc := len(captureGroups); cgc != getOwnersCaptureGroupsCount {
+		return nil, fmt.Errorf("request matched download regex but got %d capture groups insted of %d", cgc, getOwnersCaptureGroupsCount)
 	}
 	return NewGetOwnersCommand(p.Conn, p.fm, captureGroups[1]), nil
 }

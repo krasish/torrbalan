@@ -15,8 +15,8 @@ const (
 	UploadPattern          = "UPLOAD %s %s\n"
 	StopUploadPattern      = "STOP_UPLOAD %s\n"
 	DisconnectRequest      = "DISCONNECT\n"
-	UserAlreadyExists      = "UAE"
-	RegisteredSuccessfully = "RS"
+	UserAlreadyExists      = "UAE\n"
+	RegisteredSuccessfully = "RS\n"
 )
 
 type ServerCommunicator struct {
@@ -33,7 +33,7 @@ func (c ServerCommunicator) Listen() {
 		reader := bufio.NewReader(c.conn)
 		readString, err := eofutil.ReadServerCheckEOF(reader, '\n', c.stopChan)
 		if err != nil {
-			log.Printf("while reading form server: %v", err)
+			log.Printf("cannot read from server: %v", err)
 		}
 		fmt.Println(readString)
 	}
@@ -50,7 +50,6 @@ func (c ServerCommunicator) Register(username string) error {
 	if err != nil {
 		return fmt.Errorf("while reading from server: %w", err)
 	}
-
 	if resp == UserAlreadyExists {
 		return errors.New("username already exists")
 	} else if resp == RegisteredSuccessfully {
