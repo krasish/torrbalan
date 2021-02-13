@@ -12,6 +12,8 @@ import (
 const (
 	GetOwnersPattern       = "GET_OWNERS %s\n"
 	UploadPattern          = "UPLOAD %s %s\n"
+	StopUploadPattern      = "STOP_UPLOAD %s\n"
+	DisconnectRequest      = "DISCONNECT\n"
 	UserAlreadyExists      = "UAE"
 	RegisteredSuccessfully = "RS"
 )
@@ -23,6 +25,17 @@ type ServerCommunicator struct {
 
 func NewServerCommunicator(conn net.Conn, stopChan chan struct{}) *ServerCommunicator {
 	return &ServerCommunicator{conn: conn, stopChan: stopChan}
+}
+
+func (c ServerCommunicator) Listen() {
+	for {
+		reader := bufio.NewReader(c.conn)
+		readString, err := ReadCheckEOF(reader, '\n', c.stopChan)
+		if err != nil {
+			log.Printf("while reading form server: %v", err)
+		}
+		fmt.Println(readString)
+	}
 }
 
 func (c ServerCommunicator) Register(username string) error {
@@ -51,7 +64,7 @@ func (c ServerCommunicator) GetOwners(filename string) {
 
 	err := WriteCheckEOF(rw, fmt.Sprintf(GetOwnersPattern, filename), c.stopChan)
 	if err != nil {
-		fmt.Printf("While writing to server: %v\n", err)
+		log.Printf("an error while getting owners from server: %v\n", err)
 	}
 }
 
@@ -60,18 +73,25 @@ func (c ServerCommunicator) StartUploading(fileName string, fileHash string) {
 
 	err := WriteCheckEOF(rw, fmt.Sprintf(UploadPattern, fileName, fileHash), c.stopChan)
 	if err != nil {
-		fmt.Printf("While writing to server: %v\n", err)
+		log.Printf("an error while writing an upload command to server: %v\n", err)
 	}
 }
 
-func (c ServerCommunicator) Listen() {
-	for {
-		reader := bufio.NewReader(c.conn)
-		readString, err := ReadCheckEOF(reader, '\n', c.stopChan)
-		if err != nil {
-			log.Printf("while reading form server: %v", err)
-		}
-		fmt.Println(readString)
+func (c ServerCommunicator) StopUploading(fileName string) {
+	rw := bufio.NewWriter(c.conn)
+
+	err := WriteCheckEOF(rw, fmt.Sprintf(StopUploadPattern, fileName), c.stopChan)
+	if err != nil {
+		log.Printf("an error while writing a stop-upload command to server: %v\n", err)
+	}
+}
+
+func (c ServerCommunicator) Disconnect() {
+	rw := bufio.NewWriter(c.conn)
+
+	err := WriteCheckEOF(rw, DisconnectRequest, c.stopChan)
+	if err != nil {
+		log.Printf("an error while disconnecting from server: %v\n", err)
 	}
 }
 

@@ -18,25 +18,29 @@ import (
 )
 
 type Uploader struct {
-	port  string
-	q     chan struct{}
-	files map[string]string
-	rw    *sync.RWMutex
+	port     string
+	q        chan struct{}
+	files    map[string]string
+	rw       *sync.RWMutex
+	stopChan chan<- struct{}
 }
 
-func NewUploader(concurrentUploads, port uint) Uploader {
+func NewUploader(concurrentUploads, port uint, stopChan chan<- struct{}) Uploader {
 	return Uploader{
-		q:     make(chan struct{}, concurrentUploads),
-		port:  strconv.Itoa(int(port)),
-		files: make(map[string]string),
-		rw:    &sync.RWMutex{},
+		q:        make(chan struct{}, concurrentUploads),
+		port:     strconv.Itoa(int(port)),
+		files:    make(map[string]string),
+		rw:       &sync.RWMutex{},
+		stopChan: stopChan,
 	}
 }
 
-func (u Uploader) Start() error {
+func (u Uploader) Start() {
 	listener, err := net.Listen("tcp", ":"+u.port)
 	if err != nil {
-		return fmt.Errorf("while getting a listener: %w", err)
+		log.Printf("an error occured while starting listener for uploader: %v", err)
+		u.stopChan <- struct{}{}
+		return
 	}
 	log.Printf("Started listeling on %s\n", listener.Addr().String())
 
@@ -45,8 +49,8 @@ func (u Uploader) Start() error {
 	}
 }
 
-//AddFile adds a file in current uploader and returns its name a SHA256 calculated for the file added.
-func (u Uploader) AddFile(filePath string) (hash string, name string, err error) {
+//AddFile adds a file in current uploader and returns a SHA256 calculated for the file added and its name.
+func (u Uploader) AddFile(filePath string) (name string, hash string, err error) {
 	f, err := os.Open(filePath)
 	if err != nil {
 		return "", "", fmt.Errorf("while opening file: %v", err)
@@ -64,7 +68,14 @@ func (u Uploader) AddFile(filePath string) (hash string, name string, err error)
 	if _, err := io.Copy(h, f); err != nil {
 		log.Printf("an error occured while calculating hash for file: %v", err)
 	}
-	return string(h.Sum(nil)), fileInfo.Name(), err
+	return fileInfo.Name(), string(h.Sum(nil)), err
+}
+
+//AddFile adds a file in current uploader and returns a SHA256 calculated for the file added and its name.
+func (u Uploader) RemoveFile(fileName string) {
+	u.rw.Lock()
+	defer u.rw.Unlock()
+	delete(u.files, fileName)
 }
 
 func (u Uploader) acceptPeers(listener net.Listener) {
