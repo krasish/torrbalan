@@ -31,7 +31,7 @@ func (s *Server) Run() error {
 	if err != nil {
 		return fmt.Errorf("while getting a listener: %w", err)
 	}
-	log.Printf("Started listeling on %s\n", listener.Addr().String())
+	log.Printf("Started torrbalan server listeling on %s\n", listener.Addr().String())
 
 	for {
 		conn, err := listener.Accept()

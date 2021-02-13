@@ -7,6 +7,8 @@ import (
 	"io"
 	"log"
 	"net"
+
+	"github.com/krasish/torrbalan/client/internal/client"
 )
 
 const (
@@ -99,7 +101,7 @@ func WriteCheckEOF(writer *bufio.Writer, s string, stopChan chan<- struct{}) err
 	if _, err := writer.WriteString(s); err != nil {
 		if err == io.EOF {
 			log.Println("EOF while writing to server.")
-			stopChan <- struct{}{}
+			client.TryWrite(stopChan)
 		} else {
 			return err
 		}
@@ -112,7 +114,7 @@ func ReadCheckEOF(reader *bufio.Reader, delim byte, stopChan chan<- struct{}) (s
 	if err != nil {
 		if err == io.EOF {
 			log.Println("EOF while reading from server.")
-			stopChan <- struct{}{}
+			client.TryWrite(stopChan)
 			return "", nil
 		}
 		return "", err

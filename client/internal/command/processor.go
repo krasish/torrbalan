@@ -6,6 +6,9 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"strings"
+
+	"github.com/krasish/torrbalan/client/internal/client"
 
 	"github.com/krasish/torrbalan/client/internal/domain/upload"
 
@@ -32,7 +35,7 @@ type Processor struct {
 
 func NewProcessor(c *connection.ServerCommunicator) *Processor {
 	return &Processor{c: c, regexes: map[string]*regexp.Regexp{
-		DisconnectKey: regexp.MustCompile(`^[\s]*disconnect[\s]*$`),
+		DisconnectKey: regexp.MustCompile(`^[\s]*exit[\s]*$`),
 		DownloadKey:   regexp.MustCompile(`^[\s]*download[\s]+([0-9A-Za-z.\-_+$]+)[\s]+([^\s]+)[\s]*$`),
 		GetOwnersKey:  regexp.MustCompile(`^[\s]*get-owners[\s]+([0-9A-Za-z.\-_+$]+)[\s]*$`),
 		StopUploadKey: regexp.MustCompile(`^[\s]*stop-upload[\s]+([0-9A-Za-z.\-_+$]+)[\s]*$`),
@@ -82,6 +85,7 @@ func (p Processor) getUsername() (username string) {
 		fmt.Println("Please enter a username: ")
 		username, err = reader.ReadString('\n')
 		if err == nil {
+			username = strings.TrimSuffix(username, "\n")
 			break
 		}
 		fmt.Println("That didn't work. Try again!")
@@ -92,7 +96,7 @@ func (p Processor) getUsername() (username string) {
 
 func (p Processor) disconnect() {
 	p.c.Disconnect()
-	close(p.stopChan)
+	client.TryWrite(p.stopChan)
 }
 
 func (p Processor) download(cmd string) {
@@ -102,6 +106,11 @@ func (p Processor) download(cmd string) {
 		PeerAddress: captureGroups[2],
 	}
 	p.d.Download(info)
+}
+
+func (p Processor) getOwners(cmd string) {
+	captureGroups := p.regexes[GetOwnersKey].FindStringSubmatch(cmd)
+	p.c.GetOwners(captureGroups[1])
 }
 
 func (p Processor) upload(cmd string) {
@@ -120,9 +129,4 @@ func (p Processor) stopUpload(cmd string) {
 	fileName := path.Base(captureGroups[1])
 	p.c.StopUploading(fileName)
 	p.u.RemoveFile(fileName)
-}
-
-func (p Processor) getOwners(cmd string) {
-	captureGroups := p.regexes[GetOwnersKey].FindStringSubmatch(cmd)
-	p.c.GetOwners(captureGroups[1])
 }

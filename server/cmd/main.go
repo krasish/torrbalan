@@ -8,7 +8,8 @@ import (
 )
 
 func main() {
-	serverConfig, err := config.NewServer("8080", 100)
+	port := "8080"
+	serverConfig, err := config.NewServer(port, 100)
 	if err != nil {
 		log.Fatal(err)
 	}

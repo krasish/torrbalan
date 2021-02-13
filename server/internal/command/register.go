@@ -25,14 +25,15 @@ func NewRegisterCommand(um *memory.UserManager, conn net.Conn) *RegisterCommand 
 
 func (rc *RegisterCommand) Do() (memory.User, error) {
 	var (
-		rw         *bufio.ReadWriter = bufio.NewReadWriter(bufio.NewReader(rc.conn), bufio.NewWriter(rc.conn))
-		remoteAddr string            = rc.conn.RemoteAddr().String()
+		rw         = bufio.NewReadWriter(bufio.NewReader(rc.conn), bufio.NewWriter(rc.conn))
+		remoteAddr = rc.conn.RemoteAddr().String()
 		username   string
 		err        error
 	)
 
 askForUsername:
 	for username, err = rw.ReadString('\n'); err != nil; username, err = rw.ReadString('\n') {
+		fmt.Println(username)
 		if err == io.EOF {
 			return memory.User{}, fmt.Errorf("while reading username: %w", err)
 		}
@@ -52,5 +53,6 @@ askForUsername:
 	if err != nil {
 		return user, fmt.Errorf("while writing to %s: %w", remoteAddr, err)
 	}
+	log.Printf("Client at %s registered succesfully with username %s", rc.conn.RemoteAddr().String(), username)
 	return user, nil
 }
