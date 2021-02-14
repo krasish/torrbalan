@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strconv"
 
 	"github.com/krasish/torrbalan/client/pkg/eofutil"
 )
@@ -41,10 +42,10 @@ func (c ServerCommunicator) Listen() {
 	}
 }
 
-func (c ServerCommunicator) Register(username string) error {
+func (c ServerCommunicator) Register(username string, port uint) error {
 	rw := bufio.NewReadWriter(bufio.NewReader(c.conn), bufio.NewWriter(c.conn))
 
-	if err := eofutil.WriteServerCheckEOF(rw.Writer, username+"\n", c.stopChan); err != nil {
+	if err := eofutil.WriteServerCheckEOF(rw.Writer, c.concatUsernamePort(username, port), c.stopChan); err != nil {
 		return fmt.Errorf("while writing to server: %w", err)
 	}
 
@@ -101,4 +102,9 @@ func (c ServerCommunicator) printServerMessage(msg string) {
 	fmt.Println(ServerMessagesColour)
 	fmt.Println(msg)
 	fmt.Print(resetColour)
+}
+
+func (c ServerCommunicator) concatUsernamePort(username string, port uint) string {
+	portString := strconv.Itoa(int(port))
+	return username + "#" + portString + "\n"
 }

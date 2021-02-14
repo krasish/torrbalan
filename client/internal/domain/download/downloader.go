@@ -98,6 +98,7 @@ func (d Downloader) processDownloading(file *os.File, conn net.Conn) {
 	}
 
 	ReadWriteLoop(reader, writer, errorMessages)
+	log.Printf("Finished downloading %s", file.Name())
 }
 
 func ReadWriteLoop(reader *bufio.Reader, writer *bufio.Writer, errorMessages [3]string) {

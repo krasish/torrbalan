@@ -39,7 +39,7 @@ func (c Client) Start() error {
 	c.u = upload.NewUploader(c.ConcurrentUploads, c.Port, stopChan)
 
 	c.p = command.NewProcessor(c.c, c.d, c.u)
-	c.p.Register()
+	c.p.Register(c.Port)
 
 	go c.c.Listen()
 	go c.d.Start()

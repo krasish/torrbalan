@@ -49,10 +49,10 @@ func NewProcessor(c *connection.ServerCommunicator, d download.Downloader, u upl
 	}
 }
 
-func (p Processor) Register() {
+func (p Processor) Register(port uint) {
 	for {
 		username := p.getUsername()
-		if err := p.c.Register(username); err != nil {
+		if err := p.c.Register(username, port); err != nil {
 			fmt.Printf("Unsuccessful registration: %v", err)
 			continue
 		}
@@ -129,7 +129,6 @@ func (p Processor) upload(cmd string) {
 		return
 	}
 	p.c.StartUploading(name, hash)
-
 }
 
 func (p Processor) stopUpload(cmd string) {

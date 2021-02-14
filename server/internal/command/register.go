@@ -27,21 +27,22 @@ func NewRegisterCommand(um *memory.UserManager, conn net.Conn) *RegisterCommand 
 
 func (rc *RegisterCommand) Do() (memory.User, error) {
 	var (
-		rw         = bufio.NewReadWriter(bufio.NewReader(rc.conn), bufio.NewWriter(rc.conn))
-		remoteAddr = rc.conn.RemoteAddr().String()
-		username   string
-		err        error
-		h          = eofutil.LoggingEOFHandler{DestName: rc.conn.RemoteAddr().String()}
+		rw           = bufio.NewReadWriter(bufio.NewReader(rc.conn), bufio.NewWriter(rc.conn))
+		remoteAddr   = rc.conn.RemoteAddr().String()
+		userNamePort string
+		err          error
+		h            = eofutil.LoggingEOFHandler{DestName: rc.conn.RemoteAddr().String()}
 	)
 
 askForUsername:
-	for username, err = rw.ReadString('\n'); err != nil; username, err = rw.ReadString('\n') {
+	for userNamePort, err = rw.ReadString('\n'); err != nil; userNamePort, err = rw.ReadString('\n') {
 		if err == io.EOF {
-			return memory.User{}, fmt.Errorf("while reading username: %w", err)
+			return memory.User{}, fmt.Errorf("while reading userNamePort: %w", err)
 		}
-		log.Printf("could not read username for %s: %v\n", remoteAddr, err)
+		log.Printf("could not read userNamePort for %s: %v\n", remoteAddr, err)
 	}
-	username = strings.TrimSuffix(username, "\n")
+	username, port := separateUsernamePort(userNamePort)
+	remoteAddr = replacePortInAddress(remoteAddr, port)
 	user, err := rc.manager.RegisterUser(username, remoteAddr)
 
 	if err != nil { // User already exists. Write error to getOwners and retry process
@@ -55,6 +56,18 @@ askForUsername:
 	if err != nil {
 		return user, fmt.Errorf("while writing to %s: %w", remoteAddr, err)
 	}
-	log.Printf("Client at %s registered succesfully with username %s", rc.conn.RemoteAddr().String(), username)
+	log.Printf("Client at %s registered succesfully with username %s", remoteAddr, username)
 	return user, nil
+}
+
+func separateUsernamePort(concated string) (username string, port string) {
+	split := strings.Split(concated, "#")
+	username = split[0]
+	port = strings.TrimSuffix(split[1], "\n")
+	return
+}
+
+func replacePortInAddress(addr, newPort string) string {
+	cleanAddress := addr[:strings.LastIndex(addr, ":")]
+	return cleanAddress + ":" + newPort
 }
