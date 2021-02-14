@@ -98,7 +98,7 @@ func (s *Server) closeConnection(conn net.Conn, name string, registeredSuccessfu
 			return
 		}
 		if err := s.RemoveUserFromOwners(name); err != nil {
-			log.Printf("could not rmeove user %q from owners: %v", name, err)
+			log.Printf("could not remove user %q from owners: %v", name, err)
 		}
 	}
 }

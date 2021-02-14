@@ -78,10 +78,8 @@ func (fm *FileManager) DeleteUserFromFileInfo(filename string, user User) error 
 func (fm *FileManager) RemoveUserFromOwners(username string) error {
 	fm.Lock()
 	defer fm.Unlock()
-	for i, file := range fm.files {
-		if err := fm.files[i].RemoveHolder(username); err != nil {
-			return fmt.Errorf("while deleting holder from file %s: %w", file.name, err)
-		}
+	for i, _ := range fm.files {
+		fm.files[i].RemoveHolder(username) //Error could be only that user is not owner so it makes sense to slawwol it
 	}
 	return nil
 }

@@ -81,7 +81,7 @@ func (u Uploader) RemoveFile(fileName string) {
 }
 
 func (u Uploader) acceptPeers(listener net.Listener) {
-	<-u.q
+	u.q <- struct{}{}
 	conn, err := listener.Accept()
 	if err != nil {
 		log.Printf("An error ocurred while acceppting a connection: %v\n", err)
@@ -94,12 +94,13 @@ func (u Uploader) acceptPeers(listener net.Listener) {
 
 func (u Uploader) initialContract(conn net.Conn) (string, error) {
 	readWriter := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
-	fileName, err := readWriter.ReadString('$')
-	fileName = strings.TrimSuffix(fileName, "$")
+	h := eofutil.LoggingEOFHandler{DestName: conn.RemoteAddr().String()}
+
+	fileName, err := eofutil.ReadCheckEOF(readWriter.Reader, '$', h)
 	if err != nil {
 		return "", fmt.Errorf("while waiting for first response from peer: %v", err)
 	}
-	h := eofutil.LoggingEOFHandler{conn.RemoteAddr().String()}
+	fileName = strings.TrimSuffix(fileName, "$")
 
 	u.rw.RLock()
 	if _, ok := u.files[fileName]; !ok {
@@ -120,12 +121,13 @@ func (u Uploader) initialContract(conn net.Conn) (string, error) {
 }
 
 func (u Uploader) processUploading(conn net.Conn) {
-	defer func() { u.q <- struct{}{} }()
+	defer func() { <-u.q }()
 	defer logutil.LogOnErr(conn.Close)
+	remoteAddr := conn.RemoteAddr().String()
 
 	filePath, err := u.initialContract(conn)
 	if err != nil {
-		log.Printf("An error occurred while establishinng initial contract with %s: %v", conn.RemoteAddr().String(), err)
+		log.Printf("An error occurred while establishinng initial contract with %s: %v", remoteAddr, err)
 		return
 	}
 	file, err := os.Open(filePath)
@@ -136,10 +138,12 @@ func (u Uploader) processUploading(conn net.Conn) {
 	defer logutil.LogOnErr(file.Close)
 
 	reader, writer := bufio.NewReader(file), bufio.NewWriter(conn)
-	errorMessages := [3]string{
-		fmt.Sprintf("Stopping upload of file %q to %s", file.Name(), conn.RemoteAddr().String()),
+	errorMessages := [5]string{
+		fmt.Sprintf("Stopping upload of file %q to %s, EOF read.", file.Name(), remoteAddr),
 		fmt.Sprintf("An error occurred while reading from file %q: %%v", file.Name()),
-		fmt.Sprintf("An error occurred while writing to %s: %%v", conn.RemoteAddr().String()),
+		fmt.Sprintf("Stopping upload of file %q from %s. EOF read through connection.", file.Name(), remoteAddr),
+		fmt.Sprintf("An error occurred while writing to %s: %%v", remoteAddr),
+		fmt.Sprintf("final flush to peer %s failed", remoteAddr),
 	}
 
 	download.ReadWriteLoop(reader, writer, errorMessages)

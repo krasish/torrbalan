@@ -37,11 +37,12 @@ func (d Downloader) Start() {
 		info := <-d.q
 		rootPath := path.Clean(info.PathToSave)
 		filePath := rootPath + "/" + info.Filename
-		file, err := os.OpenFile(filePath, os.O_CREATE|os.O_EXCL, 0644)
+		file, err := os.OpenFile(filePath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 		if err != nil {
 			fmt.Printf("Could not create file: %v\n", err)
 			continue
 		}
+
 		conn, err := d.connectToPeer(info)
 		if err != nil {
 			fmt.Printf("Could not connect: %v\n", err)
@@ -84,24 +85,27 @@ func (d Downloader) initialContract(conn net.Conn, fileName string) error {
 
 func (d Downloader) processDownloading(file *os.File, conn net.Conn) {
 	defer logutil.LogAllOnErr(file.Close, conn.Close)
-
-	if err := d.initialContract(conn, file.Name()); err != nil {
-		log.Printf("An error occurred while establishinng initial contract with %s: %v", conn.RemoteAddr().String(), err)
+	fileName := path.Base(file.Name())
+	remoteAddr := conn.RemoteAddr().String()
+	if err := d.initialContract(conn, fileName); err != nil {
+		log.Printf("An error occurred while establishinng initial contract with %s: %v", remoteAddr, err)
 		return
 	}
 
 	reader, writer := bufio.NewReader(conn), bufio.NewWriter(file)
-	errorMessages := [3]string{
-		fmt.Sprintf("Stopping download of file %q from %s", file.Name(), conn.RemoteAddr().String()),
-		fmt.Sprintf("An error occurred while reading from %s: %%v", conn.RemoteAddr().String()),
+	errorMessages := [5]string{
+		fmt.Sprintf("Stopping download of file %q from %s. EOF read through connection.", file.Name(), remoteAddr),
+		fmt.Sprintf("An error occurred while reading from %s: %%v", remoteAddr),
+		fmt.Sprintf("Stopping download of file %q from %s. EOF while writing to file.", file.Name(), remoteAddr),
 		fmt.Sprintf("An error occurred while writing in file %s: %%v", file.Name()),
+		fmt.Sprintf("final flush to file %s failed", file.Name()),
 	}
 
 	ReadWriteLoop(reader, writer, errorMessages)
-	log.Printf("Finished downloading %s", file.Name())
+	log.Printf("Finished downloading %s", fileName)
 }
 
-func ReadWriteLoop(reader *bufio.Reader, writer *bufio.Writer, errorMessages [3]string) {
+func ReadWriteLoop(reader *bufio.Reader, writer *bufio.Writer, errorMessages [5]string) {
 	bytes := make([]byte, BufferSize)
 	for {
 		n, err := reader.Read(bytes)
@@ -114,14 +118,14 @@ func ReadWriteLoop(reader *bufio.Reader, writer *bufio.Writer, errorMessages [3]
 		}
 		_, err = writer.Write(bytes[:n])
 		if err == io.EOF {
-			log.Println(errorMessages[0])
+			log.Println(errorMessages[2])
 			break
 		} else if err != nil {
-			log.Printf(errorMessages[2], err)
+			log.Printf(errorMessages[3], err)
 			break
 		}
 	}
 	if err := writer.Flush(); err != nil {
-		log.Println("final flush to file failed")
+		log.Println(errorMessages[4])
 	}
 }
