@@ -36,6 +36,8 @@ func (s *Server) Run() error {
 	}
 	log.Printf("Started torrbalan server listeling on %s\n", listener.Addr().String())
 
+	go s.FileManager.SyncFiles()
+
 	for {
 		conn, err := listener.Accept()
 		if err != nil {

@@ -3,6 +3,7 @@ package memory
 import (
 	"fmt"
 	"sync"
+	"time"
 )
 
 type FileManager struct {
@@ -33,11 +34,10 @@ func (fm *FileManager) AddFileInfo(name, hashString string, user User) error {
 	return nil
 }
 
-func (fm *FileManager) DeleteFileInfo(name string) error {
+func (fm *FileManager) DeleteFileInfo(name string) {
 	fm.Lock()
 	defer fm.Unlock()
 	delete(fm.files, name)
-	return nil
 }
 
 func (fm *FileManager) GetFileInfo(name string) (*FileInfo, error) {
@@ -64,12 +64,10 @@ func (fm *FileManager) DeleteUserFromFileInfo(filename string, user User) error 
 		}
 	}
 
-	if !fm.files[filename].HasAnyHolders() {
+	if !fm.files[filename].HasNoHolders() {
 		fm.Lock()
 		defer fm.Unlock()
-		if err := fm.DeleteFileInfo(filename); err != nil {
-			return fmt.Errorf("while removing %s as holder for %s: %v", user.Name, filename, err)
-		}
+		fm.DeleteFileInfo(filename)
 	}
 
 	return nil
@@ -79,9 +77,26 @@ func (fm *FileManager) RemoveUserFromOwners(username string) error {
 	fm.Lock()
 	defer fm.Unlock()
 	for i, _ := range fm.files {
-		fm.files[i].RemoveHolder(username) //Error could be only that user is not owner so it makes sense to slawwol it
+		fm.files[i].RemoveHolder(username) //Error could be only that user is not owner so it makes sense to swallow it
 	}
 	return nil
+}
+
+func (fm *FileManager) SyncFiles() {
+	ticker := time.NewTicker(30 * time.Second)
+	for {
+		<-ticker.C
+		func() {
+			fm.Lock()
+			defer fm.Unlock()
+			for _, info := range fm.files {
+				if info.HasNoHolders() {
+					delete(fm.files, info.name)
+				}
+			}
+		}()
+	}
+
 }
 
 func (fm *FileManager) fileInfoExists(name string) bool {

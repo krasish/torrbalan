@@ -36,7 +36,7 @@ func (fi *FileInfo) HasHolder(name string) bool {
 	return exists
 }
 
-func (fi *FileInfo) HasAnyHolders() bool {
+func (fi *FileInfo) HasNoHolders() bool {
 	fi.RLock()
 	defer fi.RUnlock()
 	return len(fi.holders) == 0

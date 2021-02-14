@@ -25,7 +25,7 @@ func (c GetOwnersCommand) Do() error {
 	handler := eofutil.LoggingEOFHandler{DestName: c.conn.RemoteAddr().String()}
 	fileInfo, err := c.fm.GetFileInfo(c.filename)
 	if err != nil {
-		if err := eofutil.WriteCheckEOF(writer, fmt.Sprintf("Could not find %q\n", c.filename), handler); err != nil {
+		if err := eofutil.WriteCheckEOF(writer, fmt.Sprintf("No one has uploaded %q\n", c.filename), handler); err != nil {
 			return fmt.Errorf("while writing error to %s: %w", c.conn.RemoteAddr().String(), err)
 		}
 		return fmt.Errorf("while getting file %s: %w", c.filename, err)
