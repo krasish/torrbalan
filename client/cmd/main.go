@@ -27,4 +27,5 @@ func main() {
 	if err = cli.Start(); err != nil {
 		log.Fatalf("while starting client: %v", err)
 	}
+
 }

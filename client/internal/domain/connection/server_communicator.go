@@ -31,14 +31,19 @@ func NewServerCommunicator(conn net.Conn, stopChan chan struct{}) *ServerCommuni
 	return &ServerCommunicator{conn: conn, stopChan: stopChan}
 }
 
-func (c ServerCommunicator) Listen() {
+func (c ServerCommunicator) Listen(stopChan <-chan struct{}) {
 	for {
-		reader := bufio.NewReader(c.conn)
-		readString, err := eofutil.ReadServerCheckEOF(reader, '\n', c.stopChan)
-		if err != nil {
-			log.Printf("cannot read from server: %v", err)
+		select {
+		case <-stopChan:
+			break
+		default:
+			reader := bufio.NewReader(c.conn)
+			readString, err := eofutil.ReadServerCheckEOF(reader, '\n', c.stopChan)
+			if err != nil {
+				log.Printf("cannot read from server: %v", err)
+			}
+			c.printServerMessage(readString)
 		}
-		c.printServerMessage(readString)
 	}
 }
 

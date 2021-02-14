@@ -33,7 +33,7 @@ func (c Client) Start() error {
 	if err != nil {
 		return fmt.Errorf("while dialing server: %w", err)
 	}
-	stopChan := make(chan struct{})
+	stopChan := make(chan struct{}, 10)
 	c.c = connection.NewServerCommunicator(conn, stopChan)
 	c.d = download.NewDownloader(c.ConcurrentDownloads)
 	c.u = upload.NewUploader(c.ConcurrentUploads, c.Port, stopChan)
@@ -41,9 +41,9 @@ func (c Client) Start() error {
 	c.p = command.NewProcessor(c.c, c.d, c.u)
 	c.p.Register(c.Port)
 
-	go c.c.Listen()
-	go c.d.Start()
-	go c.u.Start()
+	go c.c.Listen(stopChan)
+	go c.d.Start(stopChan)
+	go c.u.Start(stopChan)
 	go c.p.Process()
 
 	<-stopChan

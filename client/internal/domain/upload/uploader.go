@@ -37,17 +37,24 @@ func NewUploader(concurrentUploads, port uint, stopChan chan<- struct{}) Uploade
 	}
 }
 
-func (u Uploader) Start() {
+func (u Uploader) Start(stopChan <-chan struct{}) {
 	listener, err := net.Listen("tcp", ":"+u.port)
 	if err != nil {
 		log.Printf("an error occured while starting listener for uploader: %v", err)
 		eofutil.TryWrite(u.stopChan)
 		return
 	}
+	defer logutil.LogOnErr(listener.Close)
 	log.Printf("Started listeling on %s\n", listener.Addr().String())
 
 	for {
-		u.acceptPeers(listener)
+		select {
+		case <-stopChan:
+			fmt.Println("STOP")
+			break
+		default:
+			u.acceptPeers(listener)
+		}
 	}
 }
 

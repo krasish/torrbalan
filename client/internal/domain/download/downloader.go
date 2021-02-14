@@ -32,23 +32,29 @@ func NewDownloader(concurrentDownloads uint) Downloader {
 	}
 }
 
-func (d Downloader) Start() {
+//
+func (d Downloader) Start(stopChan <-chan struct{}) {
 	for {
-		info := <-d.q
-		rootPath := path.Clean(info.PathToSave)
-		filePath := rootPath + "/" + info.Filename
-		file, err := os.OpenFile(filePath, os.O_CREATE|os.O_EXCL, 0644)
-		if err != nil {
-			fmt.Printf("Could not create file: %v\n", err)
-			continue
+		select {
+		case <-stopChan:
+			break
+		case info := <-d.q:
+			rootPath := path.Clean(info.PathToSave)
+			filePath := rootPath + "/" + info.Filename
+			file, err := os.OpenFile(filePath, os.O_CREATE|os.O_EXCL, 0644)
+			if err != nil {
+				fmt.Printf("Could not create file: %v\n", err)
+				continue
+			}
+			conn, err := d.connectToPeer(info)
+			if err != nil {
+				fmt.Printf("Could not connect: %v\n", err)
+				logutil.LogOnErr(file.Close)
+				continue
+			}
+			//TODO: Start in new goroutine
+			d.processDownloading(file, conn)
 		}
-		conn, err := d.connectToPeer(info)
-		if err != nil {
-			fmt.Printf("Could not connect: %v\n", err)
-			logutil.LogOnErr(file.Close)
-			continue
-		}
-		d.processDownloading(file, conn)
 	}
 }
 
