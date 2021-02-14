@@ -24,6 +24,7 @@ func (fm *FileManager) AddFileInfo(name, hashString string, user User) error {
 		if err := fm.files[name].AddHolder(user); err != nil {
 			return fmt.Errorf("while adding %q as holder for %q: %v", user.Name, name, err)
 		}
+		return nil
 	} else if err != nil {
 		return err
 	}
@@ -64,9 +65,7 @@ func (fm *FileManager) DeleteUserFromFileInfo(filename string, user User) error 
 		}
 	}
 
-	if !fm.files[filename].HasNoHolders() {
-		fm.Lock()
-		defer fm.Unlock()
+	if fm.files[filename].HasNoHolders() {
 		fm.DeleteFileInfo(filename)
 	}
 
