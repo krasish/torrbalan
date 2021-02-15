@@ -3,6 +3,7 @@ package command
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"regexp"
@@ -10,36 +11,43 @@ import (
 
 	"github.com/krasish/torrbalan/client/pkg/eofutil"
 
-	"github.com/krasish/torrbalan/client/internal/domain/upload"
-
 	"github.com/krasish/torrbalan/client/internal/domain/download"
 
 	"github.com/krasish/torrbalan/client/internal/domain/connection"
 )
 
 const (
-	DisconnectKey = "DC"
+	ExitKey       = "DC"
 	DownloadKey   = "DW"
 	GetOwnersKey  = "OWN"
 	StopUploadKey = "SUP"
 	UploadKey     = "UP"
 )
 
+type Downloader interface {
+	Download(info download.Info)
+}
+
+type Uploader interface {
+	AddFile(filePath string) (name string, hash string, err error)
+	RemoveFile(fileName string)
+}
+
 type Processor struct {
 	c        *connection.ServerCommunicator
-	d        download.Downloader
-	u        upload.Uploader
+	d        Downloader
+	u        Uploader
 	regexes  map[string]*regexp.Regexp
 	stopChan chan struct{}
 }
 
-func NewProcessor(c *connection.ServerCommunicator, d download.Downloader, u upload.Uploader) *Processor {
+func NewProcessor(c *connection.ServerCommunicator, d Downloader, u Uploader) *Processor {
 	return &Processor{
 		c: c,
 		d: d,
 		u: u,
 		regexes: map[string]*regexp.Regexp{
-			DisconnectKey: regexp.MustCompile(`^[\s]*exit[\s]*$`),
+			ExitKey:       regexp.MustCompile(`^[\s]*exit[\s]*$`),
 			DownloadKey:   regexp.MustCompile(`^[\s]*download[\s]+([0-9A-Za-z.\-_+$]+)[\s]+([^\s]+)[\s]+([^\s]+)[\s]*$`),
 			GetOwnersKey:  regexp.MustCompile(`^[\s]*get-owners[\s]+([0-9A-Za-z.\-_+$]+)[\s]*$`),
 			StopUploadKey: regexp.MustCompile(`^[\s]*stop-upload[\s]+([0-9A-Za-z.\-_+$]+)[\s]*$`),
@@ -60,13 +68,14 @@ func (p Processor) Register(port uint) {
 	}
 }
 
-func (p Processor) Process() {
-	reader := bufio.NewReader(os.Stdin)
+func (p Processor) Process(r io.Reader) {
+	reader := bufio.NewReader(r)
 	for {
 		fmt.Print("> ")
 		cmd, _ := reader.ReadString('\n')
-		if p.regexes[DisconnectKey].MatchString(cmd) {
-			p.disconnect()
+		if p.regexes[ExitKey].MatchString(cmd) {
+			p.exit()
+			break
 		} else if p.regexes[DownloadKey].MatchString(cmd) {
 			p.download(cmd)
 		} else if p.regexes[GetOwnersKey].MatchString(cmd) {
@@ -101,7 +110,7 @@ func (p Processor) getUsername() (username string) {
 	return
 }
 
-func (p Processor) disconnect() {
+func (p Processor) exit() {
 	p.c.Disconnect()
 	eofutil.TryWrite(p.stopChan)
 }
