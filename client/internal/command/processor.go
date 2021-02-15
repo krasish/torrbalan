@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"os"
 	"path"
 	"regexp"
 	"strings"
@@ -39,9 +38,10 @@ type Processor struct {
 	u        Uploader
 	regexes  map[string]*regexp.Regexp
 	stopChan chan struct{}
+	r        io.Reader
 }
 
-func NewProcessor(c *connection.ServerCommunicator, d Downloader, u Uploader) *Processor {
+func NewProcessor(c *connection.ServerCommunicator, d Downloader, u Uploader, r io.Reader) *Processor {
 	return &Processor{
 		c: c,
 		d: d,
@@ -54,6 +54,7 @@ func NewProcessor(c *connection.ServerCommunicator, d Downloader, u Uploader) *P
 			UploadKey:     regexp.MustCompile(`^[\s]*upload[\s]+([^\0\s]+)[\s]*$`),
 		},
 		stopChan: nil,
+		r:        r,
 	}
 }
 
@@ -68,8 +69,8 @@ func (p Processor) Register(port uint) {
 	}
 }
 
-func (p Processor) Process(r io.Reader) {
-	reader := bufio.NewReader(r)
+func (p Processor) Process() {
+	reader := bufio.NewReader(p.r)
 	for {
 		fmt.Print("> ")
 		cmd, _ := reader.ReadString('\n')
@@ -94,7 +95,7 @@ func (p Processor) Process(r io.Reader) {
 func (p Processor) getUsername() (username string) {
 	var (
 		err    error
-		reader = bufio.NewReader(os.Stdin)
+		reader = bufio.NewReader(p.r)
 	)
 
 	for {

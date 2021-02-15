@@ -39,13 +39,13 @@ func (c Client) Start() error {
 	c.d = download.NewDownloader(c.ConcurrentDownloads)
 	c.u = upload.NewUploader(c.ConcurrentUploads, c.Port, stopChan)
 
-	c.p = command.NewProcessor(c.c, c.d, c.u)
+	c.p = command.NewProcessor(c.c, c.d, c.u, os.Stdin)
 	c.p.Register(c.Port)
 
 	go c.c.Listen()
 	go c.d.Start()
 	go c.u.Start()
-	go c.p.Process(os.Stdin)
+	go c.p.Process()
 
 	<-stopChan
 	log.Println("Stop signal received. Shutting down...")
