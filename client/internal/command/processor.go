@@ -32,6 +32,8 @@ type Uploader interface {
 	RemoveFile(fileName string)
 }
 
+//Processor reads commands from r, matches them using regexes and takes the
+//respective action to serve the command.
 type Processor struct {
 	c        *connection.ServerCommunicator
 	d        Downloader
@@ -58,6 +60,9 @@ func NewProcessor(c *connection.ServerCommunicator, d Downloader, u Uploader, r 
 	}
 }
 
+//Register is the first method of Processor that must be called. It asks
+//user for username and attempts to register to the server using that username.
+//Register loops until a successful registration occurs.
 func (p Processor) Register(port uint) {
 	for {
 		username := p.getUsername()
@@ -69,6 +74,8 @@ func (p Processor) Register(port uint) {
 	}
 }
 
+//Process loops and reads client commands. It matches commands using
+//Processor regexes and takes respective aciton.
 func (p Processor) Process() {
 	reader := bufio.NewReader(p.r)
 	for {

@@ -16,12 +16,14 @@ import (
 
 const BufferSize = 1024
 
+//Info represents all the information needed to download a file from other client
 type Info struct {
 	Filename    string
 	PeerAddress string
 	PathToSave  string
 }
 
+//Downloader is responsible for downloading files from other clients.
 type Downloader struct {
 	q chan Info
 }
@@ -32,6 +34,8 @@ func NewDownloader(concurrentDownloads uint) Downloader {
 	}
 }
 
+//Start should be started in a separate goroutine. It waits on the Info chan of d
+//and starts goroutines handling the download from the given input.
 func (d Downloader) Start() {
 	for {
 		info := <-d.q
@@ -49,7 +53,7 @@ func (d Downloader) Start() {
 			logutil.LogOnErr(file.Close)
 			continue
 		}
-		d.processDownloading(file, conn)
+		go d.processDownloading(file, conn)
 	}
 }
 
@@ -65,9 +69,13 @@ func (d Downloader) connectToPeer(info Info) (net.Conn, error) {
 	return conn, nil
 }
 
+//initialContract should be called before processDownloading.
+//initialContract sends/reads messages to/form client on conn by which both clients
+//can determine which file is about to get transferred and determine whetehr
+//that is possible, returning an error if not.
 func (d Downloader) initialContract(conn net.Conn, fileName string) error {
 	readWriter := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
-	handler := eofutil.LoggingEOFHandler{conn.RemoteAddr().String()}
+	handler := eofutil.LoggingEOFHandler{DestName: conn.RemoteAddr().String()}
 
 	err := eofutil.WriteCheckEOF(readWriter.Writer, fileName+"$", handler)
 	if err != nil {
@@ -83,6 +91,8 @@ func (d Downloader) initialContract(conn net.Conn, fileName string) error {
 	return nil
 }
 
+//processDownloading loops reading from client and writing to the file.
+//Both the net.Conn and *file.File are closed when downloading is done or an error occurred.
 func (d Downloader) processDownloading(file *os.File, conn net.Conn) {
 	defer logutil.LogAllOnErr(file.Close, conn.Close)
 	fileName := path.Base(file.Name())
@@ -105,6 +115,8 @@ func (d Downloader) processDownloading(file *os.File, conn net.Conn) {
 	log.Printf("Finished downloading %s", fileName)
 }
 
+//ReadWriteLoop is an loop which reads from reader and writes to writer until and error or
+//io.EOF occurs logging respective messages for any scenario. It flushes writer after error.
 func ReadWriteLoop(reader *bufio.Reader, writer *bufio.Writer, errorMessages [5]string) {
 	bytes := make([]byte, BufferSize)
 	for {

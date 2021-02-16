@@ -2,6 +2,7 @@ package eofutil
 
 import "log"
 
+//LoggingEOFHandler logs a standard message including DestName on call to Handle
 type LoggingEOFHandler struct {
 	DestName string
 }

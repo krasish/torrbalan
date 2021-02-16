@@ -2,6 +2,8 @@ package eofutil
 
 import "time"
 
+//LoggingChanEOFHandler logs a standard message including DestName and attempts to
+//send to ch for 500 * time.Millisecond on call to Handle.
 type LoggingChanEOFHandler struct {
 	logger LoggingEOFHandler
 	ch     chan<- struct{}

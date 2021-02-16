@@ -22,6 +22,8 @@ const (
 	resetColour            = "\033[0m>"
 )
 
+//ServerCommunicator is responsible for sending requests of client to the
+//server in the expected format and receiving messages from server.
 type ServerCommunicator struct {
 	conn     net.Conn
 	stopChan chan struct{}
@@ -31,6 +33,8 @@ func NewServerCommunicator(conn net.Conn, stopChan chan struct{}) *ServerCommuni
 	return &ServerCommunicator{conn: conn, stopChan: stopChan}
 }
 
+//Listen should be started in a separate goroutine. It reads messages from server
+//and prints them to stdout in a special colour.
 func (c ServerCommunicator) Listen() {
 	for {
 		reader := bufio.NewReader(c.conn)
@@ -42,6 +46,10 @@ func (c ServerCommunicator) Listen() {
 	}
 }
 
+//Register attempts to register to server by sending the given username and port
+//in the expected format. It will then wait for a message from server, by which it determines
+//whether the registration was successful. An error is returned if the server does not respond
+//with a RegisteredSuccessfully message.
 func (c ServerCommunicator) Register(username string, port uint) error {
 	rw := bufio.NewReadWriter(bufio.NewReader(c.conn), bufio.NewWriter(c.conn))
 
@@ -62,6 +70,7 @@ func (c ServerCommunicator) Register(username string, port uint) error {
 	}
 }
 
+//GetOwners sends a get-owners for filename message to the server in the expected format.
 func (c ServerCommunicator) GetOwners(filename string) {
 	rw := bufio.NewWriter(c.conn)
 
@@ -71,6 +80,7 @@ func (c ServerCommunicator) GetOwners(filename string) {
 	}
 }
 
+//StartUploading sends an upload filename/filehash message to the server in the expected format.
 func (c ServerCommunicator) StartUploading(fileName string, fileHash string) {
 	rw := bufio.NewWriter(c.conn)
 
@@ -80,6 +90,7 @@ func (c ServerCommunicator) StartUploading(fileName string, fileHash string) {
 	}
 }
 
+//StopUploading sends a stop-upload filename message to the server in the expected format.
 func (c ServerCommunicator) StopUploading(fileName string) {
 	rw := bufio.NewWriter(c.conn)
 
@@ -89,6 +100,7 @@ func (c ServerCommunicator) StopUploading(fileName string) {
 	}
 }
 
+//Disconnect sends a disconnect message to the server in the expected format.
 func (c ServerCommunicator) Disconnect() {
 	rw := bufio.NewWriter(c.conn)
 

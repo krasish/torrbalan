@@ -19,6 +19,8 @@ import (
 	"github.com/krasish/torrbalan/client/internal/logutil"
 )
 
+//Uploader is responsible for uploading files to other clients. It also stores information
+//about all the files which are currently possible to be downloaded from this client.
 type Uploader struct {
 	port     string
 	q        chan struct{}
@@ -37,6 +39,8 @@ func NewUploader(concurrentUploads, port uint, stopChan chan<- struct{}) Uploade
 	}
 }
 
+//Start should be started in a separate goroutine. It starts listening on the configured port
+//and loops accepting clients. A new goroutine which serves clients is started for each client.
 func (u Uploader) Start() {
 	listener, err := net.Listen("tcp", ":"+u.port)
 	if err != nil {
@@ -73,7 +77,7 @@ func (u Uploader) AddFile(filePath string) (name string, hash string, err error)
 	return fileInfo.Name(), string(h.Sum(nil)), err
 }
 
-//AddFile adds a file in current uploader and returns a SHA256 calculated for the file added and its name.
+//RemoveFile removes a file in current uploader.
 func (u Uploader) RemoveFile(fileName string) {
 	u.rw.Lock()
 	defer u.rw.Unlock()
@@ -92,6 +96,10 @@ func (u Uploader) acceptPeers(listener net.Listener) {
 	go u.processUploading(conn)
 }
 
+//initialContract should be called before processUploading.
+//initialContract sends/reads messages to/form client on conn by which both clients
+//can determine which file is about to get transferred and determine whether
+//that is possible, returning an error if not.
 func (u Uploader) initialContract(conn net.Conn) (string, error) {
 	readWriter := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 	h := eofutil.LoggingEOFHandler{DestName: conn.RemoteAddr().String()}
@@ -120,6 +128,8 @@ func (u Uploader) initialContract(conn net.Conn) (string, error) {
 	return u.files[fileName], nil
 }
 
+//processUploading loops reading from file and writing to the client.
+//Both the net.Conn and *file.File are closed when downloading is done or an error occurred.
 func (u Uploader) processUploading(conn net.Conn) {
 	defer func() { <-u.q }()
 	defer logutil.LogOnErr(conn.Close)
