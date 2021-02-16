@@ -8,6 +8,9 @@ import (
 	"github.com/krasish/torrbalan/client/pkg/eofutil"
 )
 
+//InvalidCommand represents a command which was not matched by any
+//of the regexes of Parser. It writes an appropriate message to the client
+//reading on the given net.Conn.
 type InvalidCommand struct {
 	conn net.Conn
 }

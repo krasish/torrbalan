@@ -1,3 +1,5 @@
+//Package command is an implementation of the Command pattern. Implementations of
+//Doable interface are structs which encapsulate all information needed to perform an action.
 package command
 
 import (
@@ -21,6 +23,7 @@ const (
 	getOwnersCaptureGroupsCount  = 2
 )
 
+//Represents a set of *regexp.Regexp used by Parser to match client requests.
 type regexSet struct {
 	upload     *regexp.Regexp
 	stopUpload *regexp.Regexp
@@ -40,10 +43,13 @@ func newRegexSet() *regexSet {
 type Doable interface {
 	//Do method executes the command. It should return an error for the upload side
 	//and its callers should handle those errors. It should also write errors messages
-	//to clients.
+	//to clients if needed.
 	Do() error
 }
 
+//Parser is a reads requests from a single client through Conn and creates the respective Doable
+//representing the action needed to serve a request. Valid commands are matched by its regexSet.
+//On errors which prevent further communication with client, ConnectionClosed is set to true.
 type Parser struct {
 	Conn             net.Conn
 	user             memory.User
@@ -64,6 +70,9 @@ func NewParser(conn net.Conn, user memory.User, fileManager *memory.FileManager,
 	}
 }
 
+//Parse reads a client request (a string ending in '\n') from Conn and returns Doable
+//with an action representing the request. An error is returned when either reading
+//from client is impossible or a Doable cannot be constructed from the client request.
 func (p *Parser) Parse() (Doable, error) {
 	r := bufio.NewReader(p.Conn)
 	commandString, err := r.ReadString('\n')

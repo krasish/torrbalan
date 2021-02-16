@@ -16,6 +16,17 @@ import (
 const UserAlreadyExists = "UAE\n"
 const RegisteredSuccessfully = "RS\n"
 
+//RegisterCommand is the first command executed after a net.Conn is accepted.
+//Its purpose is to read a username from the given net.Conn which will be
+//associated with the client reading on that net.Conn.
+//
+//The command will keep on reading for username and port in format `<username>#<port>\n`
+//at which client listens until the client sends an appropriate
+//username or an error preventing further reading happens.
+//
+//On success RegisteredSuccessfully message is send to client.
+//If the client sends a username which is already in use a UserAlreadyExists
+//message is send.
 type RegisterCommand struct {
 	manager *memory.UserManager
 	conn    net.Conn

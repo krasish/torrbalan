@@ -10,6 +10,10 @@ import (
 	"github.com/krasish/torrbalan/server/internal/memory"
 )
 
+//GetOwnersCommand takes a filename and determines who uploads file with that name.
+//It calls its *memory.FileManager to get the owners (clients who
+//have declared that they upload that file with previous command)
+//and writes that string to client reading on the given net.Conn.
 type GetOwnersCommand struct {
 	conn     net.Conn
 	fm       *memory.FileManager

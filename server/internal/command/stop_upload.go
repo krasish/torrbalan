@@ -10,6 +10,9 @@ import (
 	"github.com/krasish/torrbalan/server/internal/memory"
 )
 
+//StopUploadCommand represents the action of a client sending information that it no
+//longer uploads a file which it previously desired to upload. The command updates the state of the given
+//*memory.FileManager to represent that.
 type StopUploadCommand struct {
 	conn     net.Conn
 	user     memory.User

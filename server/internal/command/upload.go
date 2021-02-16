@@ -10,6 +10,9 @@ import (
 	"github.com/krasish/torrbalan/server/internal/memory"
 )
 
+//UploadCommand represents the action of a client sending information(name, unique hash)
+//about a file which it desires to upload. The command updates the state of the given
+//*memory.FileManager to represent that.
 type UploadCommand struct {
 	conn     net.Conn
 	user     memory.User
