@@ -7,6 +7,7 @@ import (
 	"sync"
 )
 
+//Hash type represents a SHA-256 hash code calculated uniquely for a given file.
 type Hash [64]byte
 
 func NewHash(s string) (h Hash) {
@@ -18,6 +19,11 @@ func (h Hash) String() string {
 	return string(h[:])
 }
 
+//FileInfo represents a single file in the server.
+//
+//It is safe for concurrent use, protected by its *sync.Mutex.
+//The holders map represents the users which have send
+//and upload command with this particular file.
 type FileInfo struct {
 	name string
 	h    Hash

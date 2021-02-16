@@ -6,6 +6,9 @@ import (
 	"time"
 )
 
+//FileManager keeps all the files registered in the server
+//and provides methods for getting and CRUD operations which
+//are safe for concurrent use.
 type FileManager struct {
 	*sync.RWMutex
 	files map[string]*FileInfo
@@ -18,6 +21,9 @@ func NewEmptyFileManager() *FileManager {
 	}
 }
 
+//AddFileInfo adds information for a new file in FileManager or adds
+//the given user to the map of owners for the given file if the
+//file had been previously added.
 func (fm *FileManager) AddFileInfo(name, hashString string, user User) error {
 	hash := NewHash(hashString)
 	if exists, err := fm.safeCheckForExistence(name, hash); exists {
@@ -50,6 +56,8 @@ func (fm *FileManager) GetFileInfo(name string) (*FileInfo, error) {
 	return fm.files[name], nil
 }
 
+//DeleteUserFromFileInfo deletes user from the map of owners of the
+//given file and deletes the file form FileManager if it has no holders left.
 func (fm *FileManager) DeleteUserFromFileInfo(filename string, user User) error {
 	fm.RLock()
 	if !fm.fileInfoExists(filename) {
@@ -81,6 +89,9 @@ func (fm *FileManager) RemoveUserFromOwners(username string) error {
 	return nil
 }
 
+//SyncFiles is a method which should be stared in a separate goroutine.
+//It periodically checks for files which haven't got any holders (any users
+//uploading that file) and deletes them from *FileManager.
 func (fm *FileManager) SyncFiles() {
 	ticker := time.NewTicker(30 * time.Second)
 	for {

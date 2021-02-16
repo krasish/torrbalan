@@ -5,11 +5,16 @@ import (
 	"sync"
 )
 
+//User represents a single user(client) of the server
+//with its username and tcp address.
 type User struct {
 	Name string
 	Addr string
 }
 
+//UserManager keeps all the users(clients) registered in the server
+//and provides methods for creating and deleting users
+//which are safe fo concurrent use.
 type UserManager struct {
 	users map[string]User
 	m     *sync.Mutex

@@ -29,6 +29,8 @@ func NewServer(config *config.Server) *Server {
 	}
 }
 
+//Run starts listening on the configured port and loops accepting clients.
+//A new goroutine which serves clients is started for each client.
 func (s *Server) Run() error {
 	listener, err := net.Listen("tcp", ":"+s.port)
 	if err != nil {
@@ -49,6 +51,9 @@ func (s *Server) Run() error {
 	}
 }
 
+//handleConnection registers client and creates a command.Parser associated
+//with the client. The function then loops serving client requests
+//using that command.Parser.
 func (s *Server) handleConnection(conn net.Conn) {
 	remoteAddr := conn.RemoteAddr().String()
 	log.Printf("Started handling connection with %s\n", remoteAddr)
@@ -89,6 +94,7 @@ func (s *Server) parseCommandAndExecute(parser *command.Parser, remoteAddr strin
 	}
 }
 
+//closeConnection closes a connection with client and does cleanup on the Server components.
 func (s *Server) closeConnection(conn net.Conn, name string, registeredSuccessfully bool) {
 	if err := conn.Close(); err != nil {
 		log.Printf("could not close connection with %s: %v", name, err)
