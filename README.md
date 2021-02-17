@@ -23,4 +23,3 @@ Thus, an example start of a server and a client would be:
 `go run ./server/cmd/main.go 8080`
 
 `go run ./client/cmd/main.go localhost:8080`
-

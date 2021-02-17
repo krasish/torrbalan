@@ -1,0 +1,3 @@
+# github.com/krasish/torrbalan/client v0.0.0-20210216065107-659566a2cb63
+## explicit
+github.com/krasish/torrbalan/client/pkg/eofutil
